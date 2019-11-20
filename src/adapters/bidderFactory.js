@@ -151,7 +151,7 @@ export function registerBidder(spec) {
   if (Array.isArray(spec.aliases)) {
     spec.aliases.forEach(alias => {
       adapterManager.aliasRegistry[alias] = spec.code;
-      putBidder(Object.assign({}, spec, { code: alias }));
+      putBidder(Object.assign({}, spec, { code: alias, adapter: spec.code }));
     });
   }
 }
@@ -163,7 +163,7 @@ export function registerBidder(spec) {
  * @param {BidderSpec} spec
  */
 export function newBidder(spec) {
-  return Object.assign(new Adapter(spec.code), {
+  return Object.assign(new Adapter(spec.code, spec.adapter), {
     getSpec: function() {
       return Object.freeze(spec);
     },
@@ -341,8 +341,9 @@ export function newBidder(spec) {
         if (!Array.isArray(syncs)) {
           syncs = [syncs];
         }
+        const adapter = spec.adapter === undefined ? spec.code : spec.adapter
         syncs.forEach((sync) => {
-          userSync.registerSync(sync.type, spec.code, sync.url)
+          userSync.registerSync(sync.type, adapter, sync.url)
         });
       }
     }

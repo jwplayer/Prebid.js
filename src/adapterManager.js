@@ -391,7 +391,6 @@ adapterManager.registerBidAdapter = function (bidAdaptor, bidderCode, {supported
 
 adapterManager.aliasBidAdapter = function (bidderCode, alias) {
   let existingAlias = _bidderRegistry[alias];
-
   if (typeof existingAlias === 'undefined') {
     let bidAdaptor = _bidderRegistry[bidderCode];
     if (typeof bidAdaptor === 'undefined') {
@@ -413,9 +412,10 @@ adapterManager.aliasBidAdapter = function (bidderCode, alias) {
         if (bidAdaptor.constructor.prototype != Object.prototype) {
           newAdapter = new bidAdaptor.constructor();
           newAdapter.setBidderCode(alias);
+          newAdapter.setAdapterName(bidderCode);
         } else {
           let spec = bidAdaptor.getSpec();
-          newAdapter = newBidder(Object.assign({}, spec, { code: alias }));
+          newAdapter = newBidder(Object.assign({}, spec, { code: alias, adapter: spec.code }));
           _aliasRegistry[alias] = bidderCode;
         }
         adapterManager.registerBidAdapter(newAdapter, alias, {

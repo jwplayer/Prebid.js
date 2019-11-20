@@ -579,7 +579,7 @@ describe('registerBidder', function () {
     expect(registerBidAdapterStub.firstCall.args[2]).to.deep.equal({supportedMediaTypes: ['video']});
   });
 
-  it('should register bidders with the appropriate aliases', function () {
+  it('should register bidders with the appropriate aliases and associated adapter', function () {
     const thisSpec = Object.assign(newEmptySpec(), { aliases: ['foo', 'bar'] });
     registerBidder(thisSpec);
 
@@ -589,6 +589,8 @@ describe('registerBidder', function () {
     expect(registerBidAdapterStub.firstCall.args[0].getBidderCode()).to.equal(CODE);
     expect(registerBidAdapterStub.secondCall.args[0].getBidderCode()).to.equal('foo')
     expect(registerBidAdapterStub.thirdCall.args[0].getBidderCode()).to.equal('bar')
+    expect(registerBidAdapterStub.secondCall.args[0].getAdapterName()).to.equal(CODE)
+    expect(registerBidAdapterStub.thirdCall.args[0].getAdapterName()).to.equal(CODE)
 
     expect(registerBidAdapterStub.firstCall.args[1]).to.equal(CODE);
     expect(registerBidAdapterStub.secondCall.args[1]).to.equal('foo')
