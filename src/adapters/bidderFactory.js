@@ -341,7 +341,7 @@ export function newBidder(spec) {
         if (!Array.isArray(syncs)) {
           syncs = [syncs];
         }
-        const adapter = spec.adapter === undefined ? spec.code : spec.adapter
+        const adapter = spec.adapter === undefined || spec.adapter === null ? spec.code : spec.adapter
         syncs.forEach((sync) => {
           userSync.registerSync(sync.type, adapter, sync.url)
         });
