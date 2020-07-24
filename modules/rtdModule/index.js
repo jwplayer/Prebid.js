@@ -129,6 +129,7 @@ import * as utils from '../../src/utils.js';
 import events from '../../src/events.js';
 import CONSTANTS from '../../src/constants.json';
 import {gdprDataHandler, uspDataHandler} from '../../src/adapterManager.js';
+import find from 'core-js-pure/features/array/find.js';
 
 /** @type {string} */
 const MODULE_NAME = 'realTimeData';
@@ -179,7 +180,7 @@ export function init(config) {
 export function initSubModules(subModules) {
   let subModulesByOrder = [];
   _dataProviders.forEach(provider => {
-    const sm = subModules.find(s => s.name === provider.name);
+    const sm = find(subModules, s => s.name === provider.name);
     const initResponse = sm && sm.init && sm.init(provider, gdprDataHandler.getConsentData(), uspDataHandler.getConsentData()) !== 'failure';
     if (initResponse) {
       subModulesByOrder.push(Object.assign(sm, {config: provider}));
