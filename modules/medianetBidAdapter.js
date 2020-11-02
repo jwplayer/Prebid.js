@@ -1,7 +1,7 @@
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import * as utils from '../src/utils.js';
 import { config } from '../src/config.js';
-import { BANNER, NATIVE } from '../src/mediaTypes.js';
+import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import { getRefererInfo } from '../src/refererDetection.js';
 
 const BIDDER_CODE = 'medianet';
@@ -18,10 +18,12 @@ const EVENTS = {
 const EVENT_PIXEL_URL = 'qsearch-a.akamaihd.net/log';
 
 let refererInfo = getRefererInfo();
+const parsed = document.createElement('a');
+parsed.href = decodeURIComponent(refererInfo.referer);
 
 let mnData = {};
 mnData.urlData = {
-  domain: utils.parseUrl(refererInfo.referer).host,
+  domain: parsed.hostname,
   page: refererInfo.referer,
   isTop: refererInfo.reachedTop
 }
@@ -160,7 +162,15 @@ function slotParams(bidRequest) {
     },
     all: bidRequest.params
   };
-  let bannerSizes = utils.deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes || [];
+  let bannerSizes = utils.deepAccess(bidRequest, 'mediaTypes.banner.sizes') || [];
+
+  const videoInMediaType = utils.deepAccess(bidRequest, 'mediaTypes.video') || {};
+  const videoInParams = utils.deepAccess(bidRequest, 'params.video') || {};
+  const videoCombinedObj = Object.assign({}, videoInParams, videoInMediaType);
+
+  if (!utils.isEmpty(videoCombinedObj)) {
+    params.video = videoCombinedObj;
+  }
 
   if (bannerSizes.length > 0) {
     params.banner = transformSizes(bannerSizes);
@@ -305,7 +315,7 @@ export const spec = {
   code: BIDDER_CODE,
   gvlid: 142,
 
-  supportedMediaTypes: [BANNER, NATIVE],
+  supportedMediaTypes: [BANNER, NATIVE, VIDEO],
 
   /**
    * Determines whether or not the given bid request is valid.
