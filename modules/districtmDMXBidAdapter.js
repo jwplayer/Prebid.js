@@ -1,6 +1,6 @@
 import * as utils from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import {config} from '../src/config.js';
+import { config } from '../src/config.js';
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
 
 const BIDDER_CODE = 'districtmDMX';
@@ -28,20 +28,20 @@ export const spec = {
     response = response.body || {};
     if (response.seatbid) {
       if (utils.isArray(response.seatbid)) {
-        const {seatbid} = response;
+        const { seatbid } = response;
         let winners = seatbid.reduce((bid, ads) => {
-          let ad = ads.bid.reduce(function(oBid, nBid) {
+          let ad = ads.bid.reduce(function (oBid, nBid) {
             if (oBid.price < nBid.price) {
               const bid = matchRequest(nBid.impid, bidRequest);
-              const {width, height} = defaultSize(bid);
+              const { width, height } = defaultSize(bid);
               nBid.cpm = parseFloat(nBid.price).toFixed(2);
               nBid.bidId = nBid.impid;
               nBid.requestId = nBid.impid;
               nBid.width = nBid.w || width;
               nBid.height = nBid.h || height;
-              nBid.mediaType = bid.mediaTypes && bid.mediaTypes.video ? 'video' : null;
+              nBid.mediaType = bid.mediaTypes && bid.mediaTypes.video ? 'video' : 'banner';
               if (nBid.mediaType) {
-                nBid.vastXml = cleanVast(nBid.adm);
+                nBid.vastXml = cleanVast(nBid.adm, nBid.nurl);
               }
               if (nBid.dealid) {
                 nBid.dealId = nBid.dealid;
@@ -61,7 +61,7 @@ export const spec = {
               oBid.cpm = oBid.price;
               return oBid;
             }
-          }, {price: 0});
+          }, { price: 0 });
           if (ad.adm) {
             bid.push(ad)
           }
@@ -98,7 +98,7 @@ export const spec = {
       let params = config.getConfig('dmx');
       dmxRequest.user = params.user || {};
       let site = params.site || {};
-      dmxRequest.site = {...dmxRequest.site, ...site}
+      dmxRequest.site = { ...dmxRequest.site, ...site }
     } catch (e) {
 
     }
@@ -144,7 +144,7 @@ export const spec = {
       dmxRequest.source = {};
       dmxRequest.source.ext = {};
       dmxRequest.source.ext.schain = schain || {}
-    } catch (e) {}
+    } catch (e) { }
     let tosendtags = bidRequest.map(dmx => {
       var obj = {};
       obj.id = dmx.bidId;
@@ -163,9 +163,7 @@ export const spec = {
           mimes: dmx.mediaTypes.video.mimes || ['video/mp4'],
           protocols: getProtocols(dmx.mediaTypes.video),
           h: dmx.mediaTypes.video.playerSize[0][1],
-          format: dmx.mediaTypes.video.playerSize.map(s => {
-            return {w: s[0], h: s[1]};
-          }).filter(obj => typeof obj.w === 'number' && typeof obj.h === 'number')
+          w: dmx.mediaTypes.video.playerSize[0][0]
         };
       } else {
         obj.banner = {
@@ -173,7 +171,7 @@ export const spec = {
           w: cleanSizes(dmx.sizes, 'w'),
           h: cleanSizes(dmx.sizes, 'h'),
           format: cleanSizes(dmx.sizes).map(s => {
-            return {w: s[0], h: s[1]};
+            return { w: s[0], h: s[1] };
           }).filter(obj => typeof obj.w === 'number' && typeof obj.h === 'number')
         };
       }
@@ -216,7 +214,7 @@ export const spec = {
   }
 }
 
-export function getFloor (bid) {
+export function getFloor(bid) {
   let floor = null;
   if (typeof bid.getFloor === 'function') {
     const floorInfo = bid.getFloor({
@@ -296,7 +294,7 @@ export function shuffle(sizes, list) {
     }
     results.push(current);
     results = list.filter(l => results.map(r => `${r[0]}x${r[1]}`).indexOf(`${l.size[0]}x${l.size[1]}`) !== -1);
-    results = results.sort(function(a, b) {
+    results = results.sort(function (a, b) {
       return b.s - a.s;
     })
     return results.map(r => r.size);
@@ -342,7 +340,7 @@ export function upto5(allimps, dmxRequest, bidderRequest, DMXURI) {
  *
  */
 export function matchRequest(id, bidRequest) {
-  const {bids} = bidRequest.bidderRequest;
+  const { bids } = bidRequest.bidderRequest;
   const [returnValue] = bids.filter(bid => bid.bidId === id);
   return returnValue;
 }
@@ -358,7 +356,7 @@ export function checkDeepArray(Arr) {
   }
 }
 export function defaultSize(thebidObj) {
-  const {sizes} = thebidObj;
+  const { sizes } = thebidObj;
   const returnObject = {};
   returnObject.width = checkDeepArray(sizes)[0];
   returnObject.height = checkDeepArray(sizes)[1];
@@ -379,7 +377,7 @@ export function bindUserId(eids, value, source, atype) {
   }
 }
 
-export function getApi({api}) {
+export function getApi({ api }) {
   let defaultValue = [2];
   if (api && Array.isArray(api) && api.length > 0) {
     return api
@@ -396,7 +394,7 @@ export function getPlaybackmethod(playback) {
   return [2]
 }
 
-export function getProtocols({protocols}) {
+export function getProtocols({ protocols }) {
   let defaultValue = [2, 3, 5, 6, 7, 8];
   if (protocols && Array.isArray(protocols) && protocols.length > 0) {
     return protocols;
@@ -405,16 +403,25 @@ export function getProtocols({protocols}) {
   }
 }
 
-export function cleanVast(str) {
-  const toberemove = /<img\s[^>]*?src\s*=\s*['\"]([^'\"]*?)['\"][^>]*?>/
-  const [img, url] = str.match(toberemove)
-  str = str.replace(toberemove, '')
-  if (img) {
-    if (url) {
-      const insrt = `<Impression><![CDATA[${url}]]></Impression>`
-      str = str.replace('</Impression>', `</Impression>${insrt}`)
+export function cleanVast(str, nurl) {
+  try {
+    const toberemove = /<img\s[^>]*?src\s*=\s*['\"]([^'\"]*?)['\"][^>]*?>/
+    const [img, url] = str.match(toberemove)
+    str = str.replace(toberemove, '')
+    if (img) {
+      if (url) {
+        const insrt = `<Impression><![CDATA[${url}]]></Impression>`
+        str = str.replace('</Impression>', `</Impression>${insrt}`)
+      }
     }
+    return str;
+  } catch (e) {
+    if (!nurl) {
+      return str
+    }
+    const insrt = `<Impression><![CDATA[${nurl}]]></Impression>`
+    str = str.replace('</Impression>', `</Impression>${insrt}`)
+    return str
   }
-  return str;
 }
 registerBidder(spec);
