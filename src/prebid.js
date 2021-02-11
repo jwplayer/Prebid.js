@@ -518,6 +518,11 @@ $$PREBID_GLOBAL$$.requestBids = hook('async', function ({ bidsBackHandler, timeo
       return !includes(s2sBidders, bidder);
     }) : allBidders;
 
+    const videoModule = adUnit.videoModule;
+    if (videoModule) {
+
+    }
+
     adUnit.transactionId = utils.generateUUID();
 
     bidders.forEach(bidder => {
