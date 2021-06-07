@@ -1,23 +1,14 @@
 /**
  * events.js
  */
-var utils = require('./utils.js');
-var CONSTANTS = require('./constants.json');
+var utils = require('../../src/utils.js');
 var slice = Array.prototype.slice;
 var push = Array.prototype.push;
-
-// define entire events
-// var allEvents = ['bidRequested','bidResponse','bidWon','bidTimeout'];
-var allEvents = utils._map(CONSTANTS.EVENTS, function (v) {
-  return v;
-});
-
-var idPaths = CONSTANTS.EVENT_ID_PATHS;
 
 // keep a record of all events fired
 var eventsFired = [];
 
-module.exports = (function () {
+module.exports = function (allEvents) {
   var _handlers = {};
   var _public = {};
 
@@ -31,12 +22,7 @@ module.exports = (function () {
     utils.logMessage('Emitting event for: ' + eventString);
 
     var eventPayload = args[0] || {};
-    var idPath = idPaths[eventString];
-    var key = eventPayload[idPath];
     var event = _handlers[eventString] || { que: [] };
-    var eventKeys = utils._map(event, function (v, k) {
-      return k;
-    });
 
     var callbacks = [];
 
@@ -44,28 +30,17 @@ module.exports = (function () {
     eventsFired.push({
       eventType: eventString,
       args: eventPayload,
-      id: key,
       elapsedTime: utils.getPerformanceNow(),
     });
-
-    /** Push each specific callback to the `callbacks` array.
-     * If the `event` map has a key that matches the value of the
-     * event payload id path, e.g. `eventPayload[idPath]`, then apply
-     * each function in the `que` array as an argument to push to the
-     * `callbacks` array
-     * */
-    if (key && utils.contains(eventKeys, key)) {
-      push.apply(callbacks, event[key].que);
-    }
 
     /** Push each general callback to the `callbacks` array. */
     push.apply(callbacks, event.que);
 
     /** call each of the callbacks */
-    utils._each(callbacks, function (fn) {
-      if (!fn) return;
+    callbacks.forEach(callback => {
+      if (!callback) return;
       try {
-        fn.apply(null, args);
+        callback.apply(null, args);
       } catch (e) {
         utils.logError('Error executing handler:', 'events.js', e);
       }
@@ -80,14 +55,7 @@ module.exports = (function () {
     // check whether available event or not
     if (_checkAvailableEvent(eventString)) {
       var event = _handlers[eventString] || { que: [] };
-
-      if (id) {
-        event[id] = event[id] || { que: [] };
-        event[id].que.push(handler);
-      } else {
-        event.que.push(handler);
-      }
-
+      event.que.push(handler);
       _handlers[eventString] = event;
     } else {
       utils.logError('Wrong event name : ' + eventString + ' Valid event names :' + allEvents);
@@ -102,29 +70,17 @@ module.exports = (function () {
   _public.off = function (eventString, handler, id) {
     var event = _handlers[eventString];
 
-    if (utils.isEmpty(event) || (utils.isEmpty(event.que) && utils.isEmpty(event[id]))) {
+    if (utils.isEmpty(event) || utils.isEmpty(event.que)) {
       return;
     }
 
-    if (id && (utils.isEmpty(event[id]) || utils.isEmpty(event[id].que))) {
-      return;
-    }
-
-    if (id) {
-      utils._each(event[id].que, function (_handler) {
-        var que = event[id].que;
-        if (_handler === handler) {
-          que.splice(que.indexOf(_handler), 1);
-        }
-      });
-    } else {
-      utils._each(event.que, function (_handler) {
-        var que = event.que;
-        if (_handler === handler) {
-          que.splice(que.indexOf(_handler), 1);
-        }
-      });
-    }
+    var que = event.que;
+    event.que.forEach(callback => {
+      if (callback === handler) {
+        que.splice(que.indexOf(callback), 1);
+        que = event.que;
+      }
+    });
 
     _handlers[eventString] = event;
   };
@@ -138,14 +94,14 @@ module.exports = (function () {
    * @return {Array} array of events fired
    */
   _public.getEvents = function () {
-    var arrayCopy = [];
-    utils._each(eventsFired, function (value) {
-      var newProp = Object.assign({}, value);
-      arrayCopy.push(newProp);
+    var eventsCopy = [];
+    eventsFired.forEach(event => {
+      var eventCopy = Object.assign({}, event);
+      eventsCopy.push(eventCopy);
     });
 
-    return arrayCopy;
+    return eventsCopy;
   };
 
   return _public;
-}());
+};
