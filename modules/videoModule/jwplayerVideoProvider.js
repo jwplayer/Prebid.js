@@ -1,3 +1,4 @@
+var events = require('../../src/events.js');
 
 export const jwplayerVideoFactory = function (config) {
   this.player;
@@ -16,8 +17,9 @@ export const jwplayerVideoFactory = function (config) {
         .on('ready', () => {
         // trigger setupComplete
       });
+    } else {
+      //trigger setupComplete
     }
-    // if no player, instantiate.
     this.player = player;
   }
 
@@ -101,6 +103,90 @@ export const jwplayerVideoFactory = function (config) {
   }
 
   this.onEvents = function(events, callback) {
+    const player = this.player;
+
+    events.forEach(event => {
+      switch (event) {
+        case 'setupComplete':
+          player.on('setup', e => {
+
+          });
+
+        case 'setupFailed':
+          player.on('setupError', e => {
+
+          });
+
+        case 'destroyed':
+
+        case 'adRequest':
+
+        case 'adLoaded':
+
+        case 'adBreakStart':
+
+        case 'adImpression':
+
+        case 'adStarted':
+
+        case 'adTime':
+
+        case 'adPause':
+
+        case 'adPlay':
+
+        case 'adError':
+
+        case 'adClick':
+
+        case 'adSkipped':
+
+        case 'adComplete':
+
+        case 'adBreakEnd':
+
+        case 'playbackRequest':
+
+        case 'play':
+
+        case 'pause':
+
+        case 'buffer':
+
+        case 'autostartBlocked':
+
+        case 'playAttemptFailed':
+
+        case 'time':
+
+        case 'seekStart':
+
+        case 'seekEnd':
+
+        case 'complete':
+
+        case 'error':
+
+        case 'playlist':
+
+        case 'contentLoaded':
+
+        case 'playlistComplete':
+
+        case 'mute':
+
+        case 'volume':
+
+        case 'renditionUpdate':
+
+        case 'fullscreen':
+
+        case 'playerResize':
+
+        case 'viewable':
+
+      }
+    });
 
   }
 
