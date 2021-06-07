@@ -1,24 +1,25 @@
-var events = require('../../src/events.js');
 
-export const jwplayerVideoFactory = function (config) {
-  this.player;
+export const jwplayerVideoFactory = function (config, events) {
+  this.player = null;
   const playerConfig = config.playerConfig;
   const divId = config.divId;
+  this.events = events;
+  const jwplayer = window.jwplayer;
 
   this.init = function() {
-    if(!jwplayer) {
-      //error ?
+    if (!jwplayer) {
+      // error ?
       return;
     }
 
     const player = jwplayer(divId);
-    if(player.getState() === undefined) {
+    if (player.getState() === undefined) {
       player.setup(getJwConfig(playerConfig))
         .on('ready', () => {
         // trigger setupComplete
-      });
+        });
     } else {
-      //trigger setupComplete
+      // trigger setupComplete
     }
     this.player = player;
   }
@@ -45,10 +46,10 @@ export const jwplayerVideoFactory = function (config) {
       h: player.getHeight(),
       w: player.getWidth(),
       startdelay: getStartDelay(),
-      placement: getPlacement(adConfig)
+      placement: getPlacement(adConfig),
       // linearity is omitted because both forms are supported.
-      //sequence
-      //battr
+      // sequence
+      // battr
       maxextended: -1,
       boxingallowed: 1,
       playbackmethod: [ getPlaybackMethod(config) ],
@@ -109,85 +110,87 @@ export const jwplayerVideoFactory = function (config) {
       switch (event) {
         case 'setupComplete':
           player.on('setup', e => {
-
+            events.emit(event, 'karim');
           });
+          break;
 
         case 'setupFailed':
           player.on('setupError', e => {
-
+            events.emit(event, 'mourra');
           });
+          break;
 
         case 'destroyed':
+          break;
 
         case 'adRequest':
+          break;
 
-        case 'adLoaded':
-
-        case 'adBreakStart':
-
-        case 'adImpression':
-
-        case 'adStarted':
-
-        case 'adTime':
-
-        case 'adPause':
-
-        case 'adPlay':
-
-        case 'adError':
-
-        case 'adClick':
-
-        case 'adSkipped':
-
-        case 'adComplete':
-
-        case 'adBreakEnd':
-
-        case 'playbackRequest':
-
-        case 'play':
-
-        case 'pause':
-
-        case 'buffer':
-
-        case 'autostartBlocked':
-
-        case 'playAttemptFailed':
-
-        case 'time':
-
-        case 'seekStart':
-
-        case 'seekEnd':
-
-        case 'complete':
-
-        case 'error':
-
-        case 'playlist':
-
-        case 'contentLoaded':
-
-        case 'playlistComplete':
-
-        case 'mute':
-
-        case 'volume':
-
-        case 'renditionUpdate':
-
-        case 'fullscreen':
-
-        case 'playerResize':
-
-        case 'viewable':
-
+        // case 'adLoaded':
+        //
+        // case 'adBreakStart':
+        //
+        // case 'adImpression':
+        //
+        // case 'adStarted':
+        //
+        // case 'adTime':
+        //
+        // case 'adPause':
+        //
+        // case 'adPlay':
+        //
+        // case 'adError':
+        //
+        // case 'adClick':
+        //
+        // case 'adSkipped':
+        //
+        // case 'adComplete':
+        //
+        // case 'adBreakEnd':
+        //
+        // case 'playbackRequest':
+        //
+        // case 'play':
+        //
+        // case 'pause':
+        //
+        // case 'buffer':
+        //
+        // case 'autostartBlocked':
+        //
+        // case 'playAttemptFailed':
+        //
+        // case 'time':
+        //
+        // case 'seekStart':
+        //
+        // case 'seekEnd':
+        //
+        // case 'complete':
+        //
+        // case 'error':
+        //
+        // case 'playlist':
+        //
+        // case 'contentLoaded':
+        //
+        // case 'playlistComplete':
+        //
+        // case 'mute':
+        //
+        // case 'volume':
+        //
+        // case 'renditionUpdate':
+        //
+        // case 'fullscreen':
+        //
+        // case 'playerResize':
+        //
+        // case 'viewable':
       }
     });
-
   }
 
   this.offEvents = function(events, callback) {
@@ -201,13 +204,13 @@ export const jwplayerVideoFactory = function (config) {
   }
 
   return {
-    init,
-    getId,
-    getVideoParams,
-    renderAd,
-    onEvents,
-    offEvents,
-    destroy
+    init: this.init,
+    getId: this.getId,
+    getVideoParams: this.getVideoParams,
+    renderAd: this.renderAd,
+    onEvents: this.onEvents,
+    offEvents: this.offEvents,
+    destroy: this.destroy
   };
 };
 
@@ -247,7 +250,7 @@ function filterCanPlay(mediaTypes = []) {
 }
 
 function getStartDelay() {
-  //todo calculate
+  // todo calculate
 }
 
 function getPlacement(adConfig) {

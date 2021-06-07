@@ -1,10 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>JW Player Demo</title>
+    <script async src="../../modules/videoModule/jwplayerVideoProvider.js"></script>
+    <script async src="../../modules/videoModule/events.js"></script>
 </head>
 <body>
-$END$
+    <script type='text/javascript'>
+        const callbacks = [];
+        jwplayer = () => ({
+            getState: () => 'playing',
+            playAd: () => null,
+            on: callback => callbacks.push(callback),
+
+        });
+        const allEvents = ['setupComplete', 'setupFailed', 'destroyed', 'adRequest'];
+        const event = events(allEvents);
+        const config = {
+            playerConfig: {},
+            divId: 'jwplayer-placeholder'
+        };
+        const jwplayerVideoProvider = jwplayerVideoFactory({}, event);
+    </script>
+    <div id='jwplayer-placeholder'>
+
+    </div>
 </body>
 </html>
