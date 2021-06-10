@@ -1,5 +1,4 @@
 
-// export
 const jwplayerVideoFactory = function (config) {
   this.player = null;
   const playerConfig = config.playerConfig;
@@ -130,37 +129,7 @@ const jwplayerVideoFactory = function (config) {
   }
 
   function updateAdState(event) {
-    const updates = {};
-    updates.adTagUrl = event.tag,
-    updates.offset = event.adPosition,
-    updates.loadTime = event.timeLoading,
-    updates.vastAdId = event.id,
-    updates.adDescription = event.description,
-    updates.adServer = event.adsystem,
-    updates.adTitle = event.adtitle,
-    updates.advertiserId = event.advertiserId,
-    updates.advertiserName = event.advertiser,
-    updates.dealId = event.dealId,
-    // adCategories
-    updates.linear = event.linear,
-    updates.vastVersion = event.vastversion,
-    // campaignId =
-    updates.creativeUrl = event.mediaFile,
-    updates.adId = event.adId,
-    updates.universalAdId = event.universalAdId,
-    updates.creativeId = event.creativeAdId,
-    updates.creativeType = event.creativetype,
-    updates.redirectUrl = event.clickThroughUrl,
-    updates.adPlacementType = jwplayerPlacementToCode(event.placement)
 
-    updates.waterfallIndex = event.witem,
-    updates.waterfallCount = event.wcount,
-      updates.adPodCount = event.podcount,
-      updates.adPodIndex = event.sequence,
-
-      // get from config
-      updates.skippable = adConfigState.skippable,
-      updates.skipOffset = adConfigState.skipOffset,
 
     this.adState = updates;
   }
@@ -837,22 +806,60 @@ function jwplayerPlacementToCode(placement) {
   }
 }
 
-function Payload() {
-  this.state = null;
+class StaticAdState extends State {
+  updateState(event, adConfig) {
+    const updates = {
+      adTagUrl: event.tag,
+      offset: event.adPosition,
+      loadTime: event.timeLoading,
+      vastAdId: event.id,
+      adDescription: event.description,
+      adServer: event.adsystem,
+      adTitle: event.adtitle,
+      advertiserId: event.advertiserId,
+      advertiserName: event.advertiser,
+      dealId: event.dealId,
+      // adCategories
+      linear: event.linear,
+      vastVersion: event.vastversion,
+      // campaignId:
+      creativeUrl: event.mediaFile,
+      adId: event.adId,
+      universalAdId: event.universalAdId,
+      creativeId: event.creativeAdId,
+      creativeType: event.creativetype,
+      redirectUrl: event.clickThroughUrl,
+      adPlacementType: jwplayerPlacementToCode(event.placement),
+      waterfallIndex: event.witem,
+      waterfallCount: event.wcount,
+      adPodCount: event.podcount,
+      adPodIndex: event.sequence,
 
-  this.setInitialState = function (state) {
-    this.state = state;
+      skippable: adConfig.skippable,
+      skipOffset: adConfig.skipOffset,
+    };
+    super.updateState(updates);
   }
+}
 
-  this.updateState = function(update) {
-    Object.assign(this.state, update);
-  }
-
-  this.clearState = function () {
+class State {
+  constructor() {
     this.state = null;
   }
 
-  this.getState = function () {
+  setInitialState(state) {
+    this.state = state;
+  }
+
+  updateState(update) {
+    Object.assign(this.state, update);
+  }
+
+  clearState() {
+    this.state = null;
+  }
+
+  getState() {
     return this.state;
   }
 }
