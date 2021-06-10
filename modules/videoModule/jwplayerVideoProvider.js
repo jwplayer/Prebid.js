@@ -12,6 +12,8 @@ const jwplayerVideoFactory = function (config) {
   let mediaTimeState = null;
   let seekState = null;
   let playlistState = null;
+  let adConfigState = null;
+  let setupConfig = null;
 
   this.init = function() {
     if (!jwplayer) {
@@ -28,6 +30,9 @@ const jwplayerVideoFactory = function (config) {
     } else {
       // trigger setupComplete
     }
+    player.on('cast', e => {
+      this.casting = e.active;
+    })
     this.player = player;
   }
 
@@ -128,7 +133,7 @@ const jwplayerVideoFactory = function (config) {
     const updates = {};
     updates.adTagUrl = event.tag,
     updates.offset = event.adPosition,
-    // loadTime
+    updates.loadTime = event.timeLoading,
     updates.vastAdId = event.id,
     updates.adDescription = event.description,
     updates.adServer = event.adsystem,
@@ -148,16 +153,15 @@ const jwplayerVideoFactory = function (config) {
     updates.redirectUrl = event.clickThroughUrl,
     updates.adPlacementType = jwplayerPlacementToCode(event.placement)
 
-      // might have to be updated
     updates.waterfallIndex = event.witem,
     updates.waterfallCount = event.wcount,
-    //ad pod count
-    //ad pod index
+      updates.adPodCount = event.podcount,
+      updates.adPodIndex = event.sequence,
 
       // get from config
-    // skippable =
-    // skipOffset =
-      // timeout ?
+      updates.skippable = adConfigState.skippable,
+      updates.skipOffset = adConfigState.skipOffset,
+
     this.adState = updates;
   }
 
@@ -243,7 +247,7 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'adLoaded',
               adTagUrl: e.tag,
-              loadTime: e.timeLoadingd
+              loadTime: e.timeLoading
             };
             callback(event, payload);
           });
@@ -262,12 +266,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adImpression':
           player.on('adViewableImpression', e => {
-            // update, has waterfall data
             const payload = Object.assign({
               divId,
               type: 'adImpression',
-              waterfallIndex: e.witem,
-              waterfallCount: e.wcount,
             }, this.adState, this.adTime);
             callback(event, payload);
           });
@@ -275,15 +276,10 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adStarted':
           player.on('adImpression', e => {
-            // update, has waterfall data
             const payload = Object.assign({
               divId,
               type: 'adStarted',
               duration: e.duration,
-              waterfallIndex: e.witem,
-              waterfallCount: e.wcount,
-              //ad pod count
-              //ad pod index
             }, this.adState);
             callback(event, payload);
           });
@@ -333,6 +329,7 @@ const jwplayerVideoFactory = function (config) {
               playerErrorCode: e.adErrorCode,
               vastErrorCode: e.code,
               errorMessage: e.message,
+              // timeout
             }, this.adState, this.adTime);
             callback(event, payload);
           });
@@ -399,8 +396,8 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'play',
               contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl
-              // casting:
+              contentUrl: mediaState.contentUrl,
+              casting: this.casting
             };
             callback(event, payload);
           });
@@ -413,8 +410,8 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'pause',
               contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl
-              // casting:
+              contentUrl: mediaState.contentUrl,
+              casting: this.casting
             };
             callback(event, payload);
           });
@@ -440,7 +437,7 @@ const jwplayerVideoFactory = function (config) {
               contentId: mediaState.contentId,
               contentUrl: mediaState.contentUrl
               playbackMode,
-              // casting:
+              casting: this.casting
 
               /*
 Play reason (Required)
@@ -464,7 +461,7 @@ Error (optional)
               type: 'playAttemptFailed',
               contentId: mediaState.contentId,
               contentUrl: mediaState.contentUrl,
-              // casting:
+              casting: this.casting
               playlistItemIndex,
               playlistItemCount,
               playbackMode,
@@ -578,10 +575,8 @@ Error Message (optional)
             const payload = {
               divId,
               type: 'playlist',
-              playlistItemCount
-              /*
-autostart
-               */
+              playlistItemCount,
+              autostart: this.setupConfig.autostart
             };
             callback(event, payload);
           });
@@ -600,11 +595,9 @@ autostart
               title: item.title,
               description: item.description,
               playlistIndex: index,
-              playlistItemCount: this.playlistState.playlistItemCount
-
-              /*
-autostart
-               */
+              playlistItemCount: this.playlistState.playlistItemCount,
+              autostart: this.setupConfig.autostart,
+              casting: this.casting
             };
             callback(event, payload);
           });
@@ -684,7 +677,7 @@ videoFramerate (Required)
             const payload = {
               divId,
               type: 'fullscreen',
-              fullscreen: e.fullscreen
+              fullscreen: e.fullscreen,
               contentId,
               contentUrl
             };
