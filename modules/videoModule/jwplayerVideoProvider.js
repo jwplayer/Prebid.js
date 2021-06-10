@@ -1,10 +1,17 @@
 
-export const jwplayerVideoFactory = function (config, events) {
+// export
+const jwplayerVideoFactory = function (config) {
   this.player = null;
   const playerConfig = config.playerConfig;
   const divId = config.divId;
-  this.events = events;
   const jwplayer = window.jwplayer;
+  const minimumSupportedPlayerVersion = '8.20.0';
+  let adState = null; //adStaticState ?
+  let adTimeState = null;
+  let mediaState = null;
+  let mediaTimeState = null;
+  let seekState = null;
+  let playlistState = null;
 
   this.init = function() {
     if (!jwplayer) {
@@ -103,92 +110,617 @@ export const jwplayerVideoFactory = function (config, events) {
     this.player.playAd(adTagUrl);
   }
 
+  function getBasePayload() {
+    return {
+
+    };
+  }
+
+  function updateAdTime(event) {
+    const updates = {
+      adCurrentTime: event.position,
+      adDuration: event.duration
+    };
+    this.adTime = updates;
+  }
+
+  function updateAdState(event) {
+    const updates = {};
+    updates.adTagUrl = event.tag,
+    updates.offset = event.adPosition,
+    // loadTime
+    updates.vastAdId = event.id,
+    updates.adDescription = event.description,
+    updates.adServer = event.adsystem,
+    updates.adTitle = event.adtitle,
+    updates.advertiserId = event.advertiserId,
+    updates.advertiserName = event.advertiser,
+    updates.dealId = event.dealId,
+    // adCategories
+    updates.linear = event.linear,
+    updates.vastVersion = event.vastversion,
+    // campaignId =
+    updates.creativeUrl = event.mediaFile,
+    updates.adId = event.adId,
+    updates.universalAdId = event.universalAdId,
+    updates.creativeId = event.creativeAdId,
+    updates.creativeType = event.creativetype,
+    updates.redirectUrl = event.clickThroughUrl,
+    updates.adPlacementType = jwplayerPlacementToCode(event.placement)
+
+      // might have to be updated
+    updates.waterfallIndex = event.witem,
+    updates.waterfallCount = event.wcount,
+    //ad pod count
+    //ad pod index
+
+      // get from config
+    // skippable =
+    // skipOffset =
+      // timeout ?
+    this.adState = updates;
+  }
+
+  function updateMediaState(event) {
+    const item = event.item;
+    contentId: item.mediaid,
+      contentUrl: item.file, // cover other sources ? util ?
+      title: item.title,
+      description: item.description,
+      playlistIndex: event.index,
+  }
+
+  function updateMediaTimeState(event) {
+    const { position, duration } = event;
+    let playbackMode;
+    if (duration > 0) {
+      playbackMode = 0; //vod
+    } else if (duration < 0) {
+      playbackMode = 2; //dvr
+    } else {
+      playbackMode = 1; //live
+    }
+
+    this.mediaTimeState = {
+      position,
+      duration,
+      playbackMode
+    }
+  }
+
   this.onEvents = function(events, callback) {
     const player = this.player;
+    const playerVersion = jwplayer.version;
+    const divId = this.divId;
+    let adState = null;
 
     events.forEach(event => {
       switch (event) {
         case 'setupComplete':
           player.on('setup', e => {
-            events.emit(event, 'karim');
+            const payload = {
+              divId,
+              playerVersion,
+              type: 'setupComplete'
+            };
+            callback(event, payload);
           });
           break;
 
         case 'setupFailed':
           player.on('setupError', e => {
-            events.emit(event, 'mourra');
+            const payload = {
+              divId,
+              playerVersion,
+              type: 'setupFailed',
+              errorCode: e.code,
+              errorMessage: e.message,
+              error: e.sourceError // rename to source error ?
+            };
+            callback(event, payload);
           });
           break;
 
         case 'destroyed':
+          //.on('remove') ?
           break;
 
         case 'adRequest':
+          player.on('adRequest', e => {
+            const payload = {
+              divId,
+              type: 'adRequest',
+              adTagUrl: e.tag
+            };
+            callback(event, payload);
+          });
           break;
 
-        // case 'adLoaded':
-        //
-        // case 'adBreakStart':
-        //
-        // case 'adImpression':
-        //
-        // case 'adStarted':
-        //
-        // case 'adTime':
-        //
-        // case 'adPause':
-        //
-        // case 'adPlay':
-        //
-        // case 'adError':
-        //
-        // case 'adClick':
-        //
-        // case 'adSkipped':
-        //
-        // case 'adComplete':
-        //
-        // case 'adBreakEnd':
-        //
-        // case 'playbackRequest':
-        //
-        // case 'play':
-        //
-        // case 'pause':
-        //
-        // case 'buffer':
-        //
-        // case 'autostartBlocked':
-        //
-        // case 'playAttemptFailed':
-        //
-        // case 'time':
-        //
-        // case 'seekStart':
-        //
-        // case 'seekEnd':
-        //
-        // case 'complete':
-        //
-        // case 'error':
-        //
-        // case 'playlist':
-        //
-        // case 'contentLoaded':
-        //
-        // case 'playlistComplete':
-        //
-        // case 'mute':
-        //
-        // case 'volume':
-        //
-        // case 'renditionUpdate':
-        //
-        // case 'fullscreen':
-        //
-        // case 'playerResize':
-        //
-        // case 'viewable':
+        case 'adLoaded':
+          player.on('adLoaded', e => {
+            updateAdState(e);
+            const payload = {
+              divId,
+              type: 'adLoaded',
+              adTagUrl: e.tag,
+              loadTime: e.timeLoadingd
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adBreakStart':
+          player.on('adBreakStart', e => {
+            const payload = {
+              divId,
+              type: 'adBreakStart',
+              offset: e.adPosition
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adImpression':
+          player.on('adViewableImpression', e => {
+            // update, has waterfall data
+            const payload = Object.assign({
+              divId,
+              type: 'adImpression',
+              waterfallIndex: e.witem,
+              waterfallCount: e.wcount,
+            }, this.adState, this.adTime);
+            callback(event, payload);
+          });
+          break;
+
+        case 'adStarted':
+          player.on('adImpression', e => {
+            // update, has waterfall data
+            const payload = Object.assign({
+              divId,
+              type: 'adStarted',
+              duration: e.duration,
+              waterfallIndex: e.witem,
+              waterfallCount: e.wcount,
+              //ad pod count
+              //ad pod index
+            }, this.adState);
+            callback(event, payload);
+          });
+          break;
+
+        case 'adTime':
+          player.on('adTime', e => {
+            updateAdTime(e);
+            const payload = {
+              divId,
+              type: 'adTime',
+              adTagUrl: e.tag,
+              adCurrentTime: e.position,
+              adDuration: e.duration,
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adPause':
+          player.on('adPause', e => {
+            const payload = {
+              divId,
+              type: 'adPause',
+              adTagUrl: e.tag,
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adPlay':
+          player.on('adPlay', e => {
+            const payload = {
+              divId,
+              type: 'adPlay',
+              adTagUrl: e.tag,
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adError':
+          player.on('adError', e => {
+            const payload = Object.assign({
+              divId,
+              type: 'adError',
+              playerErrorCode: e.adErrorCode,
+              vastErrorCode: e.code,
+              errorMessage: e.message,
+            }, this.adState, this.adTime);
+            callback(event, payload);
+          });
+          break;
+
+        case 'adClick':
+          player.on('adClick', e => {
+            const payload = Object.assign({
+              divId,
+              type: 'adClick',
+            }, this.adState, this.adTime);
+            callback(event, payload);
+          });
+          break;
+
+        case 'adSkipped':
+          player.on('adSkipped', e => {
+            const payload = {
+              divId,
+              type: 'adSkipped',
+              adCurrentTime: e.position,
+              adDuration: e.duration,
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adComplete':
+          player.on('adComplete', e => {
+            const payload = {
+              divId,
+              type: 'adComplete',
+              adTagUrl: e.tag,
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'adBreakEnd':
+          player.on('adBreakEnd', e => {
+            const payload = {
+              divId,
+              type: 'adBreakEnd',
+              offset: e.adPosition
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'playbackRequest':
+          player.on('playAttempt', () => {
+            const payload = {
+              divId,
+              type: 'playbackRequest'
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'play':
+          player.on('play', e => {
+            const mediaState = this.mediaState;
+            const payload = {
+              divId,
+              type: 'play',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl
+              // casting:
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'pause':
+          player.on('pause', e => {
+            const mediaState = this.mediaState;
+            const payload = {
+              divId,
+              type: 'pause',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl
+              // casting:
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'buffer':
+          player.on('buffer', e => {
+            const payload = Object.assign({
+              divId,
+              type: 'buffer'
+            }, this.mediaTimeState);
+            callback(event, payload);
+          });
+          break;
+
+        case 'autostartBlocked':
+          player.on('autostartNotAllowed', e => {
+            const mediaState = this.mediaState;
+            const playbackMode = this.mediaTimeState.playbackMode;
+            const payload = {
+              divId,
+              type: 'autostartBlocked',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl
+              playbackMode,
+              // casting:
+
+              /*
+Play reason (Required)
+Error Code (optional)
+Error message (optional)
+Error (optional)
+
+               */
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'playAttemptFailed':
+          player.on('playAttemptFailed', e => {
+            const mediaState = this.mediaState;
+            const playbackMode = this.mediaTimeState.playbackMode;
+            const { playlistItemCount, playlistItemIndex } = this.playlistState;
+            const payload = {
+              divId,
+              type: 'playAttemptFailed',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl,
+              // casting:
+              playlistItemIndex,
+              playlistItemCount,
+              playbackMode,
+              playReason: e.playReason,
+              error: e.error
+            };
+            callback(event, payload);
+          });
+          break;
+
+          /*
+Playback method (Required)
+Error Code (optional)
+Error Message (optional)
+           */
+
+        case 'time':
+          player.on('time', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'time',
+              contentId,
+              contentUrl,
+              position: e.position,
+              duration: e.duration
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'seekStart':
+          player.on('seek', e => {
+            const mediaState = this.mediaState;
+            const duration = e.duration;
+            this.seekState = {
+              duration,
+              offset: e.offset
+            };
+            const payload = {
+              divId,
+              type: 'seekStart',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl,
+              position: e.position,
+              duration: duration
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'seekEnd':
+          player.on('seeked', e => {
+            const mediaState = this.mediaState;
+            const seekState = this.seekState;
+            const payload = {
+              divId,
+              type: 'seekEnd',
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl,
+              position: seekState.offset,
+              duration: seekState.duration
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'complete':
+          player.on('complete', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const { playlistItemCount, playlistItemIndex } = this.playlistState;
+            const playbackMode = this.mediaTimeState.playbackMode;
+            const payload = {
+              divId,
+              type: 'complete',
+              contentId,
+              contentUrl,
+              playlistItemCount,
+              playlistItemIndex,
+              playbackMode
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'error':
+          player.on('error', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const { playlistItemCount, playlistItemIndex } = this.playlistState;
+            const payload = {
+              divId,
+              type: 'error',
+              error: e.sourceError,
+              errorCode: e.code,
+              errorMessage: e.message,
+              contentId,
+              contentUrl,
+              playlistItemCount,
+              playlistItemIndex
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'playlist':
+          player.on('playlist', e => {
+            const playlistItemCount = e.playlist.length;
+            this.playlistState = {
+              playlistItemCount
+            };
+            const payload = {
+              divId,
+              type: 'playlist',
+              playlistItemCount
+              /*
+autostart
+               */
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'contentLoaded':
+          player.on('playlistItem', e => {
+            const { item, index } = e;
+            updateMediaState(item);
+            this.playlistState.playlistItemIndex = index;
+            const payload = {
+              divId,
+              type: 'contentLoaded',
+              contentId: item.mediaid,
+              contentUrl: item.file, // cover other sources ? util ?
+              title: item.title,
+              description: item.description,
+              playlistIndex: index,
+              playlistItemCount: this.playlistState.playlistItemCount
+
+              /*
+autostart
+               */
+            };
+            callback(event, payload);
+          });
+          break;
+          /*
+Content Tags (Required - nullable)
+Autostart (Required)
+Casting (optional)
+Video Height (Required)
+Video Width (Required)
+play reason (Required)
+Playback method (Required)
+
+           */
+
+        case 'playlistComplete':
+          player.on('playlistComplete', e => {
+            const payload = {
+              divId,
+              type: 'playlistComplete',
+              playlistItemCount: this.playlistState.playlistItemCount
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'mute':
+          player.on('mute', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'mute',
+              mute: e.mute,
+              contentId,
+              contentUrl
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'volume':
+          player.on('volume', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'volume',
+              volumePercentage: e.volume,
+              contentId,
+              contentUrl
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'renditionUpdate':
+          player.on('visualQuality', e => {
+            const bitrate = e.bitrate;
+            const level = e.level;
+            const payload = {
+              divId,
+              type: 'renditionUpdate',
+              videoReportedBitrate: bitrate,
+              audioReportedBitrate: bitrate,
+              encodedVideoWidth: level.width,
+              encodedVideoHeight: level.height
+            };
+            callback(event, payload);
+          });
+          break;
+          /*
+videoFramerate (Required)
+           */
+
+        case 'fullscreen':
+          player.on('fullscreen', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'fullscreen',
+              fullscreen: e.fullscreen
+              contentId,
+              contentUrl
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'playerResize':
+          player.on('resize', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'playerResize',
+              height: e.height,
+              width: e.width,
+              contentId,
+              contentUrl
+            };
+            callback(event, payload);
+          });
+          break;
+
+        case 'viewable':
+          player.on('viewable', e => {
+            const { contentId, contentUrl } = this.mediaState;
+            const payload = {
+              divId,
+              type: 'viewable',
+              viewable: e.viewable,
+              viewabilityPercentage: jwplayer().getPercentViewable() * 100,
+              contentId,
+              contentUrl
+            };
+            callback(event, payload);
+          });
+          break;
       }
     });
   }
@@ -306,3 +838,50 @@ function isOmidSupported(adClient) {
   const omidIsLoaded = window.OmidSessionClient !== undefined;
   return omidIsLoaded && adClient === 'vast';
 }
+
+function jwplayerPlacementToCode(placement) {
+  switch (placement) {
+    case 'instream':
+      return 1;
+      break;
+
+    case 'banner':
+      return 2;
+      break;
+
+    case 'article':
+      return 3;
+      break;
+
+    case 'feed':
+      return 4;
+      break;
+
+    case 'interstitial':
+    case 'slider':
+    case 'floating':
+      return 5;
+  }
+}
+
+function Payload() {
+  this.state = null;
+
+  this.setInitialState = function (state) {
+    this.state = state;
+  }
+
+  this.updateState = function(update) {
+    Object.assign(this.state, update);
+  }
+
+  this.clearState = function () {
+    this.state = null;
+  }
+
+  this.getState = function () {
+    return this.state;
+  }
+}
+
+window.jwplayerVideoFactory = jwplayerVideoFactory;

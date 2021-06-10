@@ -3,25 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <title>JW Player Demo</title>
-    <script async src="../../modules/videoModule/jwplayerVideoProvider.js"></script>
-    <script async src="../../modules/videoModule/events.js"></script>
+    <script sync src="../../modules/videoModule/jwplayerVideoProvider.js"></script>
+    <script sync src="../../modules/videoModule/events.js"></script>
 </head>
 <body>
     <script type='text/javascript'>
         const callbacks = [];
-        jwplayer = () => ({
+        const player = {
             getState: () => 'playing',
             playAd: () => null,
-            on: callback => callbacks.push(callback),
+            on: (event, callback) => callbacks.push(callback),
 
-        });
-        const allEvents = ['setupComplete', 'setupFailed', 'destroyed', 'adRequest'];
-        const event = events(allEvents);
+        };
+        jwplayer = () => player;
+        // const allEvents = ['setupComplete', 'setupFailed', 'destroyed', 'adRequest'];
+        // const event = events(allEvents);
+        // allEvents.forEach(eventName => {
+        //     event.on(eventName, () => {
+        //         console.log(eventName + ' called!')
+        //     });
+        // })
         const config = {
             playerConfig: {},
             divId: 'jwplayer-placeholder'
         };
-        const jwplayerVideoProvider = jwplayerVideoFactory({}, event);
+        const jwplayerVideoProvider = jwplayerVideoFactory({});
+        jwplayerVideoProvider.init();
+        jwplayerVideoProvider.onEvents(['setupComplete', 'setupFailed'], (e, m) => console.log(m));
     </script>
     <div id='jwplayer-placeholder'>
 

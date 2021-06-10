@@ -1,14 +1,16 @@
 /**
  * events.js
  */
-var utils = require('../../src/utils.js');
+// import utils from '../../src/utils.js';
+// var utils = require('../../src/utils.js');
 var slice = Array.prototype.slice;
 var push = Array.prototype.push;
 
 // keep a record of all events fired
 var eventsFired = [];
 
-module.exports = function (allEvents) {
+// module.exports
+const events = function (allEvents) {
   var _handlers = {};
   var _public = {};
 
@@ -19,7 +21,7 @@ module.exports = function (allEvents) {
    * @private
    */
   function _dispatch(eventString, args) {
-    utils.logMessage('Emitting event for: ' + eventString);
+    // utils.logMessage('Emitting event for: ' + eventString);
 
     var eventPayload = args[0] || {};
     var event = _handlers[eventString] || { que: [] };
@@ -30,7 +32,7 @@ module.exports = function (allEvents) {
     eventsFired.push({
       eventType: eventString,
       args: eventPayload,
-      elapsedTime: utils.getPerformanceNow(),
+      // elapsedTime: utils.getPerformanceNow(),
     });
 
     /** Push each general callback to the `callbacks` array. */
@@ -42,13 +44,14 @@ module.exports = function (allEvents) {
       try {
         callback.apply(null, args);
       } catch (e) {
-        utils.logError('Error executing handler:', 'events.js', e);
+        // utils.logError('Error executing handler:', 'events.js', e);
       }
     });
   }
 
   function _checkAvailableEvent(event) {
-    return utils.contains(allEvents, event);
+    return true;
+    // return utils.contains(allEvents, event);
   }
 
   _public.on = function (eventString, handler, id) {
@@ -58,7 +61,7 @@ module.exports = function (allEvents) {
       event.que.push(handler);
       _handlers[eventString] = event;
     } else {
-      utils.logError('Wrong event name : ' + eventString + ' Valid event names :' + allEvents);
+      // utils.logError('Wrong event name : ' + eventString + ' Valid event names :' + allEvents);
     }
   };
 
@@ -70,7 +73,8 @@ module.exports = function (allEvents) {
   _public.off = function (eventString, handler, id) {
     var event = _handlers[eventString];
 
-    if (utils.isEmpty(event) || utils.isEmpty(event.que)) {
+    if (!event || !event.que || !event.que.length) {
+    // if (utils.isEmpty(event) || utils.isEmpty(event.que)) {
       return;
     }
 
@@ -105,3 +109,4 @@ module.exports = function (allEvents) {
 
   return _public;
 };
+window.events = events;
