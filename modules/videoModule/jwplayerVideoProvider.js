@@ -14,6 +14,13 @@ const jwplayerVideoFactory = function (config) {
   let adConfigState = null;
   let setupConfig = null;
 
+  const initStates = function(config) {
+    adState = new AdState();
+    adTimeState = new AdTimeState();
+    mediaState = new MediaState();
+    mediaTimeState = new MediaTimeState();
+  }
+
   this.init = function() {
     if (!jwplayer) {
       // error ?
@@ -24,10 +31,12 @@ const jwplayerVideoFactory = function (config) {
     if (player.getState() === undefined) {
       player.setup(getJwConfig(playerConfig))
         .on('ready', () => {
+          initStates(playerConfig);
         // trigger setupComplete
         });
     } else {
       // trigger setupComplete
+      initStates(playerConfig);
     }
     player.on('cast', e => {
       this.casting = e.active;
@@ -112,53 +121,6 @@ const jwplayerVideoFactory = function (config) {
 
   this.renderAd = function(adTagUrl) {
     this.player.playAd(adTagUrl);
-  }
-
-  function getBasePayload() {
-    return {
-
-    };
-  }
-
-  function updateAdTime(event) {
-    const updates = {
-      adCurrentTime: event.position,
-      adDuration: event.duration
-    };
-    this.adTime = updates;
-  }
-
-  function updateAdState(event) {
-
-
-    this.adState = updates;
-  }
-
-  function updateMediaState(event) {
-    const item = event.item;
-    contentId: item.mediaid,
-      contentUrl: item.file, // cover other sources ? util ?
-      title: item.title,
-      description: item.description,
-      playlistIndex: event.index,
-  }
-
-  function updateMediaTimeState(event) {
-    const { position, duration } = event;
-    let playbackMode;
-    if (duration > 0) {
-      playbackMode = 0; //vod
-    } else if (duration < 0) {
-      playbackMode = 2; //dvr
-    } else {
-      playbackMode = 1; //live
-    }
-
-    this.mediaTimeState = {
-      position,
-      duration,
-      playbackMode
-    }
   }
 
   this.onEvents = function(events, callback) {
@@ -806,8 +768,16 @@ function jwplayerPlacementToCode(placement) {
   }
 }
 
-class StaticAdState extends State {
-  updateState(event, adConfig) {
+class AdState extends State {
+  setAdConfig(adConfig) {
+    const baseState = {
+      skippable: adConfig.skippable,
+      skipOffset: adConfig.skipOffset,
+    };
+    setBaseState(baseState);
+  }
+
+  updateForEvent(event) {
     const updates = {
       adTagUrl: event.tag,
       offset: event.adPosition,
@@ -834,17 +804,61 @@ class StaticAdState extends State {
       waterfallCount: event.wcount,
       adPodCount: event.podcount,
       adPodIndex: event.sequence,
-
-      skippable: adConfig.skippable,
-      skipOffset: adConfig.skipOffset,
     };
-    super.updateState(updates);
+    updateState(updates);
+  }
+}
+
+class AdTimeState extends State {
+  updateForEvent(event) {
+    updateState({
+      adCurrentTime: event.position,
+      adDuration: event.duration
+    });
+  }
+}
+
+class MediaState extends State {
+  updateForEvent(event) {
+    const item = event.item;
+    updateState({
+      contentId: item.mediaid,
+      contentUrl: item.file, // cover other sources ? util ?
+      title: item.title,
+      description: item.description,
+      playlistIndex: event.index,
+    });
+  }
+}
+
+class MediaTimeState extends State {
+  updateForEvent(event) {
+    const { position, duration } = event;
+    let playbackMode;
+    if (duration > 0) {
+      playbackMode = 0; //vod
+    } else if (duration < 0) {
+      playbackMode = 2; //dvr
+    } else {
+      playbackMode = 1; //live
+    }
+
+    updateState({
+      position,
+      duration,
+      playbackMode
+    });
   }
 }
 
 class State {
   constructor() {
     this.state = null;
+    this.baseState = null;
+  }
+
+  setBaseState(state) {
+    this.baseState = state;
   }
 
   setInitialState(state) {
@@ -853,6 +867,10 @@ class State {
 
   updateState(update) {
     Object.assign(this.state, update);
+  }
+
+  resetToBaseState() {
+    this.state = this.baseState;
   }
 
   clearState() {
