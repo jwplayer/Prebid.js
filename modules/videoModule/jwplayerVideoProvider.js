@@ -435,17 +435,11 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'autostartBlocked',
               contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl
-              playbackMode,
-              casting: this.casting
-
-              /*
-Play reason (Required)
-Error Code (optional)
-Error message (optional)
-Error (optional)
-
-               */
+              contentUrl: mediaState.contentUrl,
+              casting: this.casting,
+              error: e.error,
+              errorCode: e.code,
+              errorMessage: e.message
             };
             callback(event, payload);
           });
@@ -454,29 +448,23 @@ Error (optional)
         case 'playAttemptFailed':
           player.on('playAttemptFailed', e => {
             const mediaState = this.mediaState;
-            const playbackMode = this.mediaTimeState.playbackMode;
             const { playlistItemCount, playlistItemIndex } = this.playlistState;
             const payload = {
               divId,
               type: 'playAttemptFailed',
               contentId: mediaState.contentId,
               contentUrl: mediaState.contentUrl,
-              casting: this.casting
+              casting: this.casting,
               playlistItemIndex,
               playlistItemCount,
-              playbackMode,
               playReason: e.playReason,
-              error: e.error
+              error: e.error,
+              errorCode: e.code,
+              errorMessage: e.message
             };
             callback(event, payload);
           });
           break;
-
-          /*
-Playback method (Required)
-Error Code (optional)
-Error Message (optional)
-           */
 
         case 'time':
           player.on('time', e => {
@@ -597,21 +585,12 @@ Error Message (optional)
               playlistIndex: index,
               playlistItemCount: this.playlistState.playlistItemCount,
               autostart: this.setupConfig.autostart,
-              casting: this.casting
+              casting: this.casting,
+              // Content Tags (Required - nullable)
             };
             callback(event, payload);
           });
           break;
-          /*
-Content Tags (Required - nullable)
-Autostart (Required)
-Casting (optional)
-Video Height (Required)
-Video Width (Required)
-play reason (Required)
-Playback method (Required)
-
-           */
 
         case 'playlistComplete':
           player.on('playlistComplete', e => {
@@ -662,13 +641,14 @@ Playback method (Required)
               videoReportedBitrate: bitrate,
               audioReportedBitrate: bitrate,
               encodedVideoWidth: level.width,
-              encodedVideoHeight: level.height
+              encodedVideoHeight: level.height,
+              // videoFramerate (Required)
             };
             callback(event, payload);
           });
           break;
           /*
-videoFramerate (Required)
+
            */
 
         case 'fullscreen':
