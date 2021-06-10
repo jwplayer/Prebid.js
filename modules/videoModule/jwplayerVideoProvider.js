@@ -208,7 +208,6 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adStarted',
-              duration: e.duration,
             }, adState.getState());
             callback(event, payload);
           });
@@ -216,7 +215,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adTime':
           player.on('adTime', e => {
-            updateAdTime(e);
+            adTimeState.updateForEvent(e);
             const payload = {
               divId,
               type: 'adTime',
@@ -313,6 +312,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'playbackRequest'
+              // playReason!!!
             };
             callback(event, payload);
           });
@@ -320,13 +320,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'play':
           player.on('play', e => {
-            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'play',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
-              casting: this.casting
             };
             callback(event, payload);
           });
@@ -334,13 +330,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'pause':
           player.on('pause', e => {
-            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'pause',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
-              casting: this.casting
             };
             callback(event, payload);
           });
@@ -358,13 +350,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'autostartBlocked':
           player.on('autostartNotAllowed', e => {
-            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'autostartBlocked',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
-              casting: this.casting,
               error: e.error,
               errorCode: e.code,
               errorMessage: e.message
@@ -375,16 +363,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'playAttemptFailed':
           player.on('playAttemptFailed', e => {
-            const mediaState = mediaState.getState();
-            const playlistState = playlistState.getState();
             const payload = {
               divId,
               type: 'playAttemptFailed',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
-              casting: this.casting,
-              playlistItemIndex: playlistState.playlistItemIndex,
-              playlistItemCount: playlistState.playlistItemCount,
               playReason: e.playReason,
               error: e.error,
               errorCode: e.code,
@@ -396,12 +377,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'time':
           player.on('time', e => {
-            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'time',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
               position: e.position,
               duration: e.duration
             };
@@ -411,7 +389,6 @@ const jwplayerVideoFactory = function (config) {
 
         case 'seekStart':
           player.on('seek', e => {
-            const mediaState = mediaState.getState();
             const duration = e.duration;
             this.seekState = {
               duration,
@@ -420,8 +397,6 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'seekStart',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
               position: e.position,
               duration: duration
             };
@@ -431,13 +406,10 @@ const jwplayerVideoFactory = function (config) {
 
         case 'seekEnd':
           player.on('seeked', e => {
-            const mediaState = mediaState.getState();
             const seekState = this.seekState;
             const payload = {
               divId,
               type: 'seekEnd',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
               position: seekState.offset,
               duration: seekState.duration
             };
@@ -447,17 +419,9 @@ const jwplayerVideoFactory = function (config) {
 
         case 'complete':
           player.on('complete', e => {
-            const mediaState = mediaState.getState();
-            const playlistState = playlistState.getState();
-            const playbackMode = mediaTimeState.getState().playbackMode;
             const payload = {
               divId,
               type: 'complete',
-              contentId: mediaState.contentId,
-              contentUrl: mediaState.contentUrl,
-              playlistItemCount: playlistState.playlistItemCount,
-              playlistItemIndex: playlistState.playlistItemIndex,
-              playbackMode
             };
             callback(event, payload);
           });
@@ -465,18 +429,12 @@ const jwplayerVideoFactory = function (config) {
 
         case 'error':
           player.on('error', e => {
-            const media = mediaState.getState();
-            const playlist = playlistState.getState();
             const payload = {
               divId,
               type: 'error',
               error: e.sourceError,
               errorCode: e.code,
               errorMessage: e.message,
-              contentId: media.contentId,
-              contentUrl: media.contentUrl,
-              playlistItemCount: playlist.playlistItemCount,
-              playlistItemIndex: playlist.playlistItemIndex
             };
             callback(event, payload);
           });
@@ -509,8 +467,6 @@ const jwplayerVideoFactory = function (config) {
               title: item.title,
               description: item.description,
               playlistIndex: index,
-              playlistItemCount: playlistState.playlistItemCount,
-              autostart: this.setupConfig.autostart,
               casting: this.casting,
               // Content Tags (Required - nullable)
             };
@@ -523,7 +479,6 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'playlistComplete',
-              playlistItemCount: playlistState.playlistItemCount
             };
             callback(event, payload);
             playlistState.clearState();
@@ -536,9 +491,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'mute',
-              mute: e.mute,
-              contentId: mediaData.contentId,
-              contentUrl: mediaData.contentUrl
+              mute: e.mute
             };
             callback(event, payload);
           });
@@ -546,13 +499,10 @@ const jwplayerVideoFactory = function (config) {
 
         case 'volume':
           player.on('volume', e => {
-            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'volume',
               volumePercentage: e.volume,
-              contentId: mediaData.contentId,
-              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -577,13 +527,10 @@ const jwplayerVideoFactory = function (config) {
 
         case 'fullscreen':
           player.on('fullscreen', e => {
-            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'fullscreen',
               fullscreen: e.fullscreen,
-              contentId: mediaData.contentId,
-              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -591,14 +538,11 @@ const jwplayerVideoFactory = function (config) {
 
         case 'playerResize':
           player.on('resize', e => {
-            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'playerResize',
               height: e.height,
               width: e.width,
-              contentId: mediaData.contentId,
-              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -606,14 +550,11 @@ const jwplayerVideoFactory = function (config) {
 
         case 'viewable':
           player.on('viewable', e => {
-            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'viewable',
               viewable: e.viewable,
               viewabilityPercentage: jwplayer().getPercentViewable() * 100,
-              contentId: mediaData.contentId,
-              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
