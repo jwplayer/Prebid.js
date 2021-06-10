@@ -5,13 +5,12 @@ const jwplayerVideoFactory = function (config) {
   const divId = config.divId;
   const jwplayer = window.jwplayer;
   const minimumSupportedPlayerVersion = '8.20.0';
-  let adState = null; //adStaticState ?
+  let adState = null;
   let adTimeState = null;
   let mediaState = null;
   let mediaTimeState = null;
   let seekState = null;
   let playlistState = null;
-  let adConfigState = null;
   let setupConfig = null;
 
   const initStates = function(config) {
@@ -127,7 +126,6 @@ const jwplayerVideoFactory = function (config) {
     const player = this.player;
     const playerVersion = jwplayer.version;
     const divId = this.divId;
-    let adState = null;
 
     events.forEach(event => {
       switch (event) {
@@ -173,7 +171,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adLoaded':
           player.on('adLoaded', e => {
-            updateAdState(e);
+            adState.updateForEvent(e);
             const payload = {
               divId,
               type: 'adLoaded',
@@ -200,7 +198,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adImpression',
-            }, this.adState, this.adTime);
+            }, adState.getState(), adTimeState.getState());
             callback(event, payload);
           });
           break;
@@ -211,7 +209,7 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'adStarted',
               duration: e.duration,
-            }, this.adState);
+            }, adState.getState());
             callback(event, payload);
           });
           break;
@@ -261,7 +259,7 @@ const jwplayerVideoFactory = function (config) {
               vastErrorCode: e.code,
               errorMessage: e.message,
               // timeout
-            }, this.adState, this.adTime);
+            }, adState.getState(), adTimeState.getState());
             callback(event, payload);
           });
           break;
@@ -271,7 +269,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adClick',
-            }, this.adState, this.adTime);
+            }, adState.getState(), adTimeState.getState());
             callback(event, payload);
           });
           break;
@@ -322,7 +320,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'play':
           player.on('play', e => {
-            const mediaState = this.mediaState;
+            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'play',
@@ -336,7 +334,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'pause':
           player.on('pause', e => {
-            const mediaState = this.mediaState;
+            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'pause',
@@ -353,15 +351,14 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'buffer'
-            }, this.mediaTimeState);
+            }, mediaTimeState.getState());
             callback(event, payload);
           });
           break;
 
         case 'autostartBlocked':
           player.on('autostartNotAllowed', e => {
-            const mediaState = this.mediaState;
-            const playbackMode = this.mediaTimeState.playbackMode;
+            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'autostartBlocked',
@@ -378,16 +375,16 @@ const jwplayerVideoFactory = function (config) {
 
         case 'playAttemptFailed':
           player.on('playAttemptFailed', e => {
-            const mediaState = this.mediaState;
-            const { playlistItemCount, playlistItemIndex } = this.playlistState;
+            const mediaState = mediaState.getState();
+            const playlistState = playlistState.getState();
             const payload = {
               divId,
               type: 'playAttemptFailed',
               contentId: mediaState.contentId,
               contentUrl: mediaState.contentUrl,
               casting: this.casting,
-              playlistItemIndex,
-              playlistItemCount,
+              playlistItemIndex: playlistState.playlistItemIndex,
+              playlistItemCount: playlistState.playlistItemCount,
               playReason: e.playReason,
               error: e.error,
               errorCode: e.code,
@@ -399,12 +396,12 @@ const jwplayerVideoFactory = function (config) {
 
         case 'time':
           player.on('time', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaState = mediaState.getState();
             const payload = {
               divId,
               type: 'time',
-              contentId,
-              contentUrl,
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl,
               position: e.position,
               duration: e.duration
             };
@@ -414,7 +411,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'seekStart':
           player.on('seek', e => {
-            const mediaState = this.mediaState;
+            const mediaState = mediaState.getState();
             const duration = e.duration;
             this.seekState = {
               duration,
@@ -434,7 +431,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'seekEnd':
           player.on('seeked', e => {
-            const mediaState = this.mediaState;
+            const mediaState = mediaState.getState();
             const seekState = this.seekState;
             const payload = {
               divId,
@@ -450,16 +447,16 @@ const jwplayerVideoFactory = function (config) {
 
         case 'complete':
           player.on('complete', e => {
-            const { contentId, contentUrl } = this.mediaState;
-            const { playlistItemCount, playlistItemIndex } = this.playlistState;
-            const playbackMode = this.mediaTimeState.playbackMode;
+            const mediaState = mediaState.getState();
+            const playlistState = playlistState.getState();
+            const playbackMode = mediaTimeState.getState().playbackMode;
             const payload = {
               divId,
               type: 'complete',
-              contentId,
-              contentUrl,
-              playlistItemCount,
-              playlistItemIndex,
+              contentId: mediaState.contentId,
+              contentUrl: mediaState.contentUrl,
+              playlistItemCount: playlistState.playlistItemCount,
+              playlistItemIndex: playlistState.playlistItemIndex,
               playbackMode
             };
             callback(event, payload);
@@ -468,18 +465,18 @@ const jwplayerVideoFactory = function (config) {
 
         case 'error':
           player.on('error', e => {
-            const { contentId, contentUrl } = this.mediaState;
-            const { playlistItemCount, playlistItemIndex } = this.playlistState;
+            const media = mediaState.getState();
+            const playlist = playlistState.getState();
             const payload = {
               divId,
               type: 'error',
               error: e.sourceError,
               errorCode: e.code,
               errorMessage: e.message,
-              contentId,
-              contentUrl,
-              playlistItemCount,
-              playlistItemIndex
+              contentId: media.contentId,
+              contentUrl: media.contentUrl,
+              playlistItemCount: playlist.playlistItemCount,
+              playlistItemIndex: playlist.playlistItemIndex
             };
             callback(event, payload);
           });
@@ -488,9 +485,7 @@ const jwplayerVideoFactory = function (config) {
         case 'playlist':
           player.on('playlist', e => {
             const playlistItemCount = e.playlist.length;
-            this.playlistState = {
-              playlistItemCount
-            };
+            playlistState.updateForEvent(e);
             const payload = {
               divId,
               type: 'playlist',
@@ -504,8 +499,8 @@ const jwplayerVideoFactory = function (config) {
         case 'contentLoaded':
           player.on('playlistItem', e => {
             const { item, index } = e;
-            updateMediaState(item);
-            this.playlistState.playlistItemIndex = index;
+            mediaState.updateForEvent(e);
+            playlistState.playlistItemIndex = index;
             const payload = {
               divId,
               type: 'contentLoaded',
@@ -514,7 +509,7 @@ const jwplayerVideoFactory = function (config) {
               title: item.title,
               description: item.description,
               playlistIndex: index,
-              playlistItemCount: this.playlistState.playlistItemCount,
+              playlistItemCount: playlistState.playlistItemCount,
               autostart: this.setupConfig.autostart,
               casting: this.casting,
               // Content Tags (Required - nullable)
@@ -528,21 +523,22 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'playlistComplete',
-              playlistItemCount: this.playlistState.playlistItemCount
+              playlistItemCount: playlistState.playlistItemCount
             };
             callback(event, payload);
+            playlistState.clearState();
           });
           break;
 
         case 'mute':
           player.on('mute', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'mute',
               mute: e.mute,
-              contentId,
-              contentUrl
+              contentId: mediaData.contentId,
+              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -550,13 +546,13 @@ const jwplayerVideoFactory = function (config) {
 
         case 'volume':
           player.on('volume', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'volume',
               volumePercentage: e.volume,
-              contentId,
-              contentUrl
+              contentId: mediaData.contentId,
+              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -578,19 +574,16 @@ const jwplayerVideoFactory = function (config) {
             callback(event, payload);
           });
           break;
-          /*
-
-           */
 
         case 'fullscreen':
           player.on('fullscreen', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'fullscreen',
               fullscreen: e.fullscreen,
-              contentId,
-              contentUrl
+              contentId: mediaData.contentId,
+              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -598,14 +591,14 @@ const jwplayerVideoFactory = function (config) {
 
         case 'playerResize':
           player.on('resize', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'playerResize',
               height: e.height,
               width: e.width,
-              contentId,
-              contentUrl
+              contentId: mediaData.contentId,
+              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
@@ -613,14 +606,14 @@ const jwplayerVideoFactory = function (config) {
 
         case 'viewable':
           player.on('viewable', e => {
-            const { contentId, contentUrl } = this.mediaState;
+            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'viewable',
               viewable: e.viewable,
               viewabilityPercentage: jwplayer().getPercentViewable() * 100,
-              contentId,
-              contentUrl
+              contentId: mediaData.contentId,
+              contentUrl: mediaData.contentUrl
             };
             callback(event, payload);
           });
