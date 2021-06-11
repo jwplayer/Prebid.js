@@ -7,14 +7,12 @@ const jwplayerVideoFactory = function (config) {
   const minimumSupportedPlayerVersion = '8.20.0';
   let adState = null;
   let adTimeState = null;
-  let mediaState = null;
   let timeState = null;
   let pendingSeek = {};
   let setupConfig = null;
 
   const initStates = function(config) {
-    adState = new AdState();
-    mediaState = new MediaState();
+    adState = new AdState(config.advertising);
     timeState = new TimeState();
   }
 
@@ -167,12 +165,12 @@ const jwplayerVideoFactory = function (config) {
         case 'adLoaded':
           player.on('adLoaded', e => {
             adState.updateForEvent(e);
-            const payload = {
+            const payload = Object.assign({
               divId,
               type: 'adLoaded',
               adTagUrl: e.tag,
               loadTime: e.timeLoading
-            };
+            }, adState.getState());
             callback(event, payload);
           });
           break;
@@ -452,7 +450,6 @@ const jwplayerVideoFactory = function (config) {
         case 'contentLoaded':
           player.on('playlistItem', e => {
             const { item, index } = e;
-            mediaState.updateForEvent(e);
             const payload = {
               divId,
               type: 'contentLoaded',
@@ -479,7 +476,6 @@ const jwplayerVideoFactory = function (config) {
 
         case 'mute':
           player.on('mute', e => {
-            const mediaData = mediaState.getState();
             const payload = {
               divId,
               type: 'mute',
@@ -743,19 +739,6 @@ class AdState extends State {
       adPodIndex: event.sequence,
     };
     updateState(updates);
-  }
-}
-
-class MediaState extends State {
-  updateForEvent(event) {
-    const item = event.item;
-    updateState({
-      contentId: item.mediaid,
-      contentUrl: item.file, // cover other sources ? util ?
-      title: item.title,
-      description: item.description,
-      playlistIndex: event.index,
-    });
   }
 }
 
