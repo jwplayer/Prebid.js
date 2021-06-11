@@ -10,7 +10,6 @@ const jwplayerVideoFactory = function (config) {
   let mediaState = null;
   let mediaTimeState = null;
   let seekState = null;
-  let playlistState = null;
   let setupConfig = null;
 
   const initStates = function(config) {
@@ -145,7 +144,7 @@ const jwplayerVideoFactory = function (config) {
               type: 'setupFailed',
               errorCode: e.code,
               errorMessage: e.message,
-              error: e.sourceError // rename to source error ?
+              sourceError: e.sourceError
             };
             callback(event, payload);
           });
@@ -254,6 +253,7 @@ const jwplayerVideoFactory = function (config) {
               playerErrorCode: e.adErrorCode,
               vastErrorCode: e.code,
               errorMessage: e.message,
+              sourceError: e.sourceError
               // timeout
             }, adState.getState(), adTimeState.getState());
             callback(event, payload);
@@ -350,7 +350,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'autostartBlocked',
-              error: e.error,
+              sourceError: e.error,
               errorCode: e.code,
               errorMessage: e.message
             };
@@ -364,7 +364,7 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'playAttemptFailed',
               playReason: e.playReason,
-              error: e.error,
+              sourceError: e.sourceError,
               errorCode: e.code,
               errorMessage: e.message
             };
@@ -429,7 +429,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'error',
-              error: e.sourceError,
+              sourceError: e.sourceError,
               errorCode: e.code,
               errorMessage: e.message,
             };
@@ -440,7 +440,6 @@ const jwplayerVideoFactory = function (config) {
         case 'playlist':
           player.on('playlist', e => {
             const playlistItemCount = e.playlist.length;
-            playlistState.updateForEvent(e);
             const payload = {
               divId,
               type: 'playlist',
@@ -455,7 +454,6 @@ const jwplayerVideoFactory = function (config) {
           player.on('playlistItem', e => {
             const { item, index } = e;
             mediaState.updateForEvent(e);
-            playlistState.playlistItemIndex = index;
             const payload = {
               divId,
               type: 'contentLoaded',
@@ -477,7 +475,6 @@ const jwplayerVideoFactory = function (config) {
               type: 'playlistComplete',
             };
             callback(event, payload);
-            playlistState.clearState();
           });
           break;
 
@@ -565,6 +562,7 @@ const jwplayerVideoFactory = function (config) {
             };
             callback(event, payload);
           });
+          break;
       }
     });
   }
