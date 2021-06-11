@@ -9,7 +9,7 @@ const jwplayerVideoFactory = function (config) {
   let adTimeState = null;
   let mediaState = null;
   let timeState = null;
-  let seekState = null;
+  let pendingSeek = {};
   let setupConfig = null;
 
   const initStates = function(config) {
@@ -304,11 +304,11 @@ const jwplayerVideoFactory = function (config) {
           break;
 
         case 'playbackRequest':
-          player.on('playAttempt', () => {
+          player.on('playAttempt', e => {
             const payload = {
               divId,
-              type: 'playbackRequest'
-              // playReason!!!
+              type: 'playbackRequest',
+              playReason: e.playReason,
             };
             callback(event, payload);
           });
@@ -386,7 +386,7 @@ const jwplayerVideoFactory = function (config) {
         case 'seekStart':
           player.on('seek', e => {
             const duration = e.duration;
-            this.seekState = {
+            pendingSeek = {
               duration,
               offset: e.offset
             };
@@ -402,14 +402,14 @@ const jwplayerVideoFactory = function (config) {
 
         case 'seekEnd':
           player.on('seeked', e => {
-            const seekState = this.seekState;
             const payload = {
               divId,
               type: 'seekEnd',
-              position: seekState.offset,
-              duration: seekState.duration
+              position: pendingSeek.offset,
+              duration: pendingSeek.duration
             };
             callback(event, payload);
+            pendingSeek = {};
           });
           break;
 
