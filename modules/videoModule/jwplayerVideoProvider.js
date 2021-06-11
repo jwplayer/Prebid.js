@@ -10,28 +10,34 @@ const jwplayerVideoFactory = function (config) {
   let pendingSeek = {};
   let supportedMediaTypes;
 
-  const initStates = function(config) {
-    adState = new AdState();
-    timeState = new TimeState();
-  }
-
+  // TODO rething init - should be able to register events statically, before initialized.
+  // TODO should factory throw ? This would allow surfacing of error before API is ready to be used.
+  // TODO Alternatively, setupComplete and setupError are args in factory function ?
   const init = function() {
     if (!jwplayer) {
-      // error ?
+      // TODO setupFailure
       return;
+    }
+
+    if (jwplayer.version < minimumSupportedPlayerVersion) {
+      // TODO setupFailure
     }
 
     player = jwplayer(divId);
     if (player.getState() === undefined) {
       player.setup(getJwConfig(playerConfig))
         .on('ready', () => {
-          initStates(playerConfig);
-        // trigger setupComplete
+        // TODO setupComplete
         });
     } else {
-      // trigger setupComplete
-      initStates(playerConfig);
+      // TODO setupComplete
     }
+    initStates(playerConfig);
+  }
+
+  const initStates = function(config) {
+    adState = new AdState();
+    timeState = new TimeState();
   }
 
   const getId = function() {
@@ -138,7 +144,13 @@ const jwplayerVideoFactory = function (config) {
           break;
 
         case 'destroyed':
-          //.on('remove') ?
+          player.on('remove', e => {
+            const payload = {
+              divId,
+              type: 'destroyed'
+            };
+            callback(event, payload);
+          });
           break;
 
         case 'adRequest':
@@ -557,13 +569,12 @@ const jwplayerVideoFactory = function (config) {
   }
 
   const offEvents = function(events, callback) {
-
+    // TODO implement
   }
 
   const destroy = function() {
-    this.offEvents();
+    player.remove();
     player = null;
-    // trigger destroyed
   }
 
   return {
@@ -577,137 +588,7 @@ const jwplayerVideoFactory = function (config) {
   };
 };
 
-function getJwConfig(config) {
-  const jwConfig = config.params.vendorConfig || {};
-  if (jwConfig.autostart === undefined) {
-    jwConfig.autostart = config.autostart;
-  }
-
-  if (jwConfig.mute === undefined) {
-    jwConfig.mute = config.mute;
-  }
-
-  if (!jwConfig.key) {
-    jwConfig.key = config.licenseKey;
-  }
-
-  const advertising = jwConfig.advertising || {};
-  if (!jwConfig.file && !jwConfig.playlist && !jwConfig.source) {
-    advertising.outstream = true;
-    advertising.client = advertising.client || 'vast';
-  }
-
-  jwConfig.advertising = advertising;
-  return jwConfig;
-}
-
-function getSkipParams(adConfig) {
-  const skipParams = {};
-  const skipoffset = adConfig.skipoffset;
-  if (skipoffset !== undefined) {
-    const skippable = skipoffset >= 0;
-    skipParams.skip = skippable ? 1 : 0;
-    if (skippable) {
-      skipParams.skipmin = skipoffset + 2;
-      skipParams.skipafter = skipoffset;
-    }
-  }
-  return skipParams;
-}
-
-const MEDIA_TYPES = [
-  'video/mp4', 'video/ogg', 'video/webm', 'video/aac', 'application/vnd.apple.mpegurl'
-];
-
-function filterCanPlay(mediaTypes = []) {
-  const el = document.createElement('video');
-  return mediaTypes
-    .filter(mediaType => el.canPlayType(mediaType))
-    .concat('application/javascript'); // Always allow VPAIDs.
-}
-
-function getStartDelay() {
-  // todo calculate
-}
-
-function getPlacement(adConfig) {
-  if (!adConfig.outstream) {
-    // https://developer.jwplayer.com/jwplayer/docs/jw8-embed-an-outstream-player for more info on outstream
-    return 1;
-  }
-  // todo possibly omit if outstream? Hard to determine placement.
-}
-
-const PLAYBACK_METHODS = { // Spec 5.10.
-  AUTOPLAY: 1,
-  AUTOPLAY_MUTED: 2,
-  CLICK_TO_PLAY: 3,
-  CLICK_TO_PLAY_MUTED: 4,
-  VIEWABLE: 5,
-  VIEWABLE_MUTED: 6
-};
-
-const PROTOCOLS = { // Spec 5.8.
-  // VAST_1_0: 1,
-  VAST_2_0: 2,
-  VAST_3_0: 3,
-  // VAST_1_O_WRAPPER: 4,
-  VAST_2_0_WRAPPER: 5,
-  VAST_3_0_WRAPPER: 6,
-  VAST_4_0: 7,
-  VAST_4_0_WRAPPER: 8
-};
-
-const API_FRAMEWORKS = { // Spec 5.6.
-  VPAID_1_0: 1,
-  VPAID_2_0: 2,
-  OMID_1_0: 7
-};
-
-function getPlaybackMethod({ autoplay, mute, autoplayAdsMuted }) {
-  if (autoplay) {
-    // Determine whether player is going to start muted.
-    const isMuted = mute || autoplayAdsMuted; // todo autoplayAdsMuted only applies to preRoll
-    return isMuted ? PLAYBACK_METHODS.AUTOPLAY_MUTED : PLAYBACK_METHODS.AUTOPLAY;
-  }
-  return PLAYBACK_METHODS.CLICK_TO_PLAY;
-}
-
-/**
- * Indicates if Omid is supported
- *
- * @param {string=} adClient - The identifier of the ad plugin requesting the bid
- * @returns {boolean} - support of omid
- */
-function isOmidSupported(adClient) {
-  const omidIsLoaded = window.OmidSessionClient !== undefined;
-  return omidIsLoaded && adClient === 'vast';
-}
-
-function jwplayerPlacementToCode(placement) {
-  switch (placement) {
-    case 'instream':
-      return 1;
-      break;
-
-    case 'banner':
-      return 2;
-      break;
-
-    case 'article':
-      return 3;
-      break;
-
-    case 'feed':
-      return 4;
-      break;
-
-    case 'interstitial':
-    case 'slider':
-    case 'floating':
-      return 5;
-  }
-}
+// STATE
 
 class AdState extends State {
   updateForEvent(event) {
@@ -802,5 +683,141 @@ class State {
     this.state = {};
   }
 }
+
+// UTILS
+
+function getJwConfig(config) {
+  const jwConfig = config.params.vendorConfig || {};
+  if (jwConfig.autostart === undefined) {
+    jwConfig.autostart = config.autostart;
+  }
+
+  if (jwConfig.mute === undefined) {
+    jwConfig.mute = config.mute;
+  }
+
+  if (!jwConfig.key) {
+    jwConfig.key = config.licenseKey;
+  }
+
+  const advertising = jwConfig.advertising || {};
+  if (!jwConfig.file && !jwConfig.playlist && !jwConfig.source) {
+    advertising.outstream = true;
+    advertising.client = advertising.client || 'vast';
+  }
+
+  jwConfig.advertising = advertising;
+  return jwConfig;
+}
+
+function getSkipParams(adConfig) {
+  const skipParams = {};
+  const skipoffset = adConfig.skipoffset;
+  if (skipoffset !== undefined) {
+    const skippable = skipoffset >= 0;
+    skipParams.skip = skippable ? 1 : 0;
+    if (skippable) {
+      skipParams.skipmin = skipoffset + 2;
+      skipParams.skipafter = skipoffset;
+    }
+  }
+  return skipParams;
+}
+
+const MEDIA_TYPES = [
+  'video/mp4', 'video/ogg', 'video/webm', 'video/aac', 'application/vnd.apple.mpegurl'
+];
+
+function filterCanPlay(mediaTypes = []) {
+  const el = document.createElement('video');
+  return mediaTypes
+    .filter(mediaType => el.canPlayType(mediaType))
+    .concat('application/javascript'); // Always allow VPAIDs.
+}
+
+function getStartDelay() {
+  // todo calculate
+}
+
+function getPlacement(adConfig) {
+  // TODO might be able to use getPlacement from ad utils!
+  if (!adConfig.outstream) {
+    // https://developer.jwplayer.com/jwplayer/docs/jw8-embed-an-outstream-player for more info on outstream
+    return 1;
+  }
+}
+
+function getPlaybackMethod({ autoplay, mute, autoplayAdsMuted }) {
+  if (autoplay) {
+    // Determine whether player is going to start muted.
+    const isMuted = mute || autoplayAdsMuted; // todo autoplayAdsMuted only applies to preRoll
+    return isMuted ? PLAYBACK_METHODS.AUTOPLAY_MUTED : PLAYBACK_METHODS.AUTOPLAY;
+  }
+  return PLAYBACK_METHODS.CLICK_TO_PLAY;
+}
+
+/**
+ * Indicates if Omid is supported
+ *
+ * @param {string=} adClient - The identifier of the ad plugin requesting the bid
+ * @returns {boolean} - support of omid
+ */
+function isOmidSupported(adClient) {
+  const omidIsLoaded = window.OmidSessionClient !== undefined;
+  return omidIsLoaded && adClient === 'vast';
+}
+
+function jwplayerPlacementToCode(placement) {
+  switch (placement) {
+    case 'instream':
+      return 1;
+      break;
+
+    case 'banner':
+      return 2;
+      break;
+
+    case 'article':
+      return 3;
+      break;
+
+    case 'feed':
+      return 4;
+      break;
+
+    case 'interstitial':
+    case 'slider':
+    case 'floating':
+      return 5;
+  }
+}
+
+// CONSTANTS
+
+const PLAYBACK_METHODS = { // Spec 5.10.
+  AUTOPLAY: 1,
+  AUTOPLAY_MUTED: 2,
+  CLICK_TO_PLAY: 3,
+  CLICK_TO_PLAY_MUTED: 4,
+  VIEWABLE: 5,
+  VIEWABLE_MUTED: 6
+};
+
+const PROTOCOLS = { // Spec 5.8.
+                    // VAST_1_0: 1,
+  VAST_2_0: 2,
+  VAST_3_0: 3,
+  // VAST_1_O_WRAPPER: 4,
+  VAST_2_0_WRAPPER: 5,
+  VAST_3_0_WRAPPER: 6,
+  VAST_4_0: 7,
+  VAST_4_0_WRAPPER: 8
+};
+
+const API_FRAMEWORKS = { // Spec 5.6.
+  VPAID_1_0: 1,
+  VPAID_2_0: 2,
+  OMID_1_0: 7
+};
 
 window.jwplayerVideoFactory = jwplayerVideoFactory;
