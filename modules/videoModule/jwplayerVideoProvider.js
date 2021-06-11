@@ -8,15 +8,14 @@ const jwplayerVideoFactory = function (config) {
   let adState = null;
   let adTimeState = null;
   let mediaState = null;
-  let mediaTimeState = null;
+  let timeState = null;
   let seekState = null;
   let setupConfig = null;
 
   const initStates = function(config) {
     adState = new AdState();
-    adTimeState = new AdTimeState();
     mediaState = new MediaState();
-    mediaTimeState = new MediaTimeState();
+    timeState = new TimeState();
   }
 
   this.init = function() {
@@ -194,7 +193,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adImpression',
-            }, adState.getState(), adTimeState.getState());
+            }, adState.getState(), timeState.getState());
             callback(event, payload);
           });
           break;
@@ -211,13 +210,13 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adTime':
           player.on('adTime', e => {
-            adTimeState.updateForEvent(e);
+            timeState.updateForEvent(e);
             const payload = {
               divId,
               type: 'adTime',
               adTagUrl: e.tag,
-              adCurrentTime: e.position,
-              adDuration: e.duration,
+              time: e.position,
+              duration: e.duration,
             };
             callback(event, payload);
           });
@@ -255,7 +254,7 @@ const jwplayerVideoFactory = function (config) {
               errorMessage: e.message,
               sourceError: e.sourceError
               // timeout
-            }, adState.getState(), adTimeState.getState());
+            }, adState.getState(), timeState.getState());
             callback(event, payload);
           });
           break;
@@ -265,7 +264,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adClick',
-            }, adState.getState(), adTimeState.getState());
+            }, adState.getState(), timeState.getState());
             callback(event, payload);
           });
           break;
@@ -275,8 +274,8 @@ const jwplayerVideoFactory = function (config) {
             const payload = {
               divId,
               type: 'adSkipped',
-              adCurrentTime: e.position,
-              adDuration: e.duration,
+              time: e.position,
+              duration: e.duration,
             };
             callback(event, payload);
           });
@@ -340,7 +339,7 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'buffer'
-            }, mediaTimeState.getState());
+            }, timeState.getState());
             callback(event, payload);
           });
           break;
@@ -747,15 +746,6 @@ class AdState extends State {
   }
 }
 
-class AdTimeState extends State {
-  updateForEvent(event) {
-    updateState({
-      adCurrentTime: event.position,
-      adDuration: event.duration
-    });
-  }
-}
-
 class MediaState extends State {
   updateForEvent(event) {
     const item = event.item;
@@ -769,9 +759,10 @@ class MediaState extends State {
   }
 }
 
-class MediaTimeState extends State {
+class TimeState extends State {
   updateForEvent(event) {
     const { position, duration } = event;
+
     let playbackMode;
     if (duration > 0) {
       playbackMode = 0; //vod
@@ -782,7 +773,7 @@ class MediaTimeState extends State {
     }
 
     updateState({
-      position,
+      time: position,
       duration,
       playbackMode
     });
