@@ -1,28 +1,26 @@
 
 const jwplayerVideoFactory = function (config) {
-  this.player = null;
+  const jwplayer = window.jwplayer;
+  let player = null;
   const playerConfig = config.playerConfig;
   const divId = config.divId;
-  const jwplayer = window.jwplayer;
   const minimumSupportedPlayerVersion = '8.20.0';
   let adState = null;
-  let adTimeState = null;
   let timeState = null;
   let pendingSeek = {};
-  let setupConfig = null;
 
   const initStates = function(config) {
     adState = new AdState(config.advertising);
     timeState = new TimeState();
   }
 
-  this.init = function() {
+  const init = function() {
     if (!jwplayer) {
       // error ?
       return;
     }
 
-    const player = jwplayer(divId);
+    player = jwplayer(divId);
     if (player.getState() === undefined) {
       player.setup(getJwConfig(playerConfig))
         .on('ready', () => {
@@ -33,14 +31,13 @@ const jwplayerVideoFactory = function (config) {
       // trigger setupComplete
       initStates(playerConfig);
     }
-    this.player = player;
   }
 
-  this.getId = function() {
+  const getId = function() {
     return divId;
   }
 
-  this.getVideoParams = function() {
+  const getVideoParams = function() {
     const player = this.player;
     const config = this.player.getConfig();
     const adConfig = config.advertising;
@@ -111,11 +108,11 @@ const jwplayerVideoFactory = function (config) {
     }
   }
 
-  this.renderAd = function(adTagUrl) {
-    this.player.playAd(adTagUrl);
+  const renderAd = function(adTagUrl) {
+    player.playAd(adTagUrl);
   }
 
-  this.onEvents = function(events, callback) {
+  const onEvents = function(events, callback) {
     const player = this.player;
     const playerVersion = jwplayer.version;
     const divId = this.divId;
@@ -168,8 +165,6 @@ const jwplayerVideoFactory = function (config) {
             const payload = Object.assign({
               divId,
               type: 'adLoaded',
-              adTagUrl: e.tag,
-              loadTime: e.timeLoading
             }, adState.getState());
             callback(event, payload);
           });
@@ -253,6 +248,7 @@ const jwplayerVideoFactory = function (config) {
               sourceError: e.sourceError
               // timeout
             }, adState.getState(), timeState.getState());
+            adState.resetToBaseState();
             callback(event, payload);
           });
           break;
@@ -276,6 +272,7 @@ const jwplayerVideoFactory = function (config) {
               duration: e.duration,
             };
             callback(event, payload);
+            adState.resetToBaseState();
           });
           break;
 
@@ -287,6 +284,7 @@ const jwplayerVideoFactory = function (config) {
               adTagUrl: e.tag,
             };
             callback(event, payload);
+            adState.resetToBaseState();
           });
           break;
 
@@ -441,7 +439,7 @@ const jwplayerVideoFactory = function (config) {
               divId,
               type: 'playlist',
               playlistItemCount,
-              autostart: this.setupConfig.autostart
+              autostart: playerConfig.autostart
             };
             callback(event, payload);
           });
@@ -562,24 +560,24 @@ const jwplayerVideoFactory = function (config) {
     });
   }
 
-  this.offEvents = function(events, callback) {
+  const offEvents = function(events, callback) {
 
   }
 
-  this.destroy = function() {
+  const destroy = function() {
     this.offEvents();
-    this.player = null;
+    player = null;
     // trigger destroyed
   }
 
   return {
-    init: this.init,
-    getId: this.getId,
-    getVideoParams: this.getVideoParams,
-    renderAd: this.renderAd,
-    onEvents: this.onEvents,
-    offEvents: this.offEvents,
-    destroy: this.destroy
+    init,
+    getId,
+    getVideoParams,
+    renderAd,
+    onEvents,
+    offEvents,
+    destroy
   };
 };
 
@@ -702,12 +700,11 @@ function jwplayerPlacementToCode(placement) {
 }
 
 class AdState extends State {
-  setAdConfig(adConfig) {
-    const baseState = {
+  constructor(adConfig) {
+    super({
       skippable: adConfig.skippable,
       skipOffset: adConfig.skipOffset,
-    };
-    setBaseState(baseState);
+    });
   }
 
   updateForEvent(event) {
@@ -764,21 +761,16 @@ class TimeState extends State {
 }
 
 class State {
-  constructor() {
-    this.state = null;
-    this.baseState = null;
-  }
-
-  setBaseState(state) {
-    this.baseState = state;
-  }
-
-  setInitialState(state) {
-    this.state = state;
+  constructor(baseState) {
+    this.state = this.baseState = baseState || {};
   }
 
   updateState(update) {
     Object.assign(this.state, update);
+  }
+
+  getState() {
+    return this.state;
   }
 
   resetToBaseState() {
@@ -787,10 +779,6 @@ class State {
 
   clearState() {
     this.state = null;
-  }
-
-  getState() {
-    return this.state;
   }
 }
 
