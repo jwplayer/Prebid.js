@@ -8,9 +8,10 @@ const jwplayerVideoFactory = function (config) {
   let adState = null;
   let timeState = null;
   let pendingSeek = {};
+  let supportedMediaTypes;
 
   const initStates = function(config) {
-    adState = new AdState(config.advertising);
+    adState = new AdState();
     timeState = new TimeState();
   }
 
@@ -38,12 +39,12 @@ const jwplayerVideoFactory = function (config) {
   }
 
   const getVideoParams = function() {
-    const player = this.player;
     const config = this.player.getConfig();
     const adConfig = config.advertising;
+    supportedMediaTypes = supportedMediaTypes || filterCanPlay(MEDIA_TYPES);
 
     const video = {
-      mimes: filterCanPlay(MEDIA_TYPES),
+      mimes: supportedMediaTypes,
       protocols: [
         PROTOCOLS.VAST_2_0,
         PROTOCOLS.VAST_3_0,
@@ -52,8 +53,8 @@ const jwplayerVideoFactory = function (config) {
         PROTOCOLS.VAST_3_0_WRAPPER,
         PROTOCOLS.VAST_4_0_WRAPPER
       ],
-      h: player.getHeight(),
-      w: player.getWidth(),
+      h: player.getHeight(), // TODO does player call need optimization ?
+      w: player.getWidth(), // TODO does player call need optimization ?
       startdelay: getStartDelay(),
       placement: getPlacement(adConfig),
       // linearity is omitted because both forms are supported.
@@ -73,25 +74,17 @@ const jwplayerVideoFactory = function (config) {
       video.api.push(API_FRAMEWORKS.OMID_1_0);
     }
 
-    const skipoffset = adConfig.skipoffset;
-    if (skipoffset !== undefined) {
-      const skippable = skipoffset >= 0;
-      video.skip = skippable ? 1 : 0;
-      if (skippable) {
-        video.skipmin = skipoffset + 2;
-        video.skipafter = skipoffset;
-      }
-    }
+    Object.assign(video, getSkipParams(adConfig));
 
-    if (player.getFullscreen()) {
+    if (player.getFullscreen()) { // TODO does player call needs optimization ?
       // only specify ad position when in Fullscreen since computational cost is low
       // ad position options are listed in oRTB 2.5 section 5.4
       // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
       video.pos = 7;
     }
 
-    const item = this.player.getPlaylistItem();
-    const duration = this.player.getDuration();
+    const item = player.getPlaylistItem(); // TODO does player call need optimization ?
+    const { duration, playbackMode } = timeState.getState();
     const content = {
       id: item.mediaid,
       url: item.file,
@@ -99,7 +92,7 @@ const jwplayerVideoFactory = function (config) {
       // cat?
       // keywords?
       len: duration,
-      livestream: duration > 0 ? 0 : 1
+      livestream: Math.min(playbackMode, 1)
     };
 
     return {
@@ -162,6 +155,7 @@ const jwplayerVideoFactory = function (config) {
         case 'adLoaded':
           player.on('adLoaded', e => {
             adState.updateForEvent(e);
+            adState.updateState(getSkipParams(adConfig));
             const payload = Object.assign({
               divId,
               type: 'adLoaded',
@@ -172,6 +166,7 @@ const jwplayerVideoFactory = function (config) {
 
         case 'adBreakStart':
           player.on('adBreakStart', e => {
+            timeState.clearState();
             const payload = {
               divId,
               type: 'adBreakStart',
@@ -248,7 +243,7 @@ const jwplayerVideoFactory = function (config) {
               sourceError: e.sourceError
               // timeout
             }, adState.getState(), timeState.getState());
-            adState.resetToBaseState();
+            adState.clearState();
             callback(event, payload);
           });
           break;
@@ -272,7 +267,7 @@ const jwplayerVideoFactory = function (config) {
               duration: e.duration,
             };
             callback(event, payload);
-            adState.resetToBaseState();
+            adState.clearState();
           });
           break;
 
@@ -284,7 +279,7 @@ const jwplayerVideoFactory = function (config) {
               adTagUrl: e.tag,
             };
             callback(event, payload);
-            adState.resetToBaseState();
+            adState.clearState();
           });
           break;
 
@@ -416,6 +411,7 @@ const jwplayerVideoFactory = function (config) {
               type: 'complete',
             };
             callback(event, payload);
+            timeState.clearState();
           });
           break;
 
@@ -605,6 +601,20 @@ function getJwConfig(config) {
   return jwConfig;
 }
 
+function getSkipParams(adConfig) {
+  const skipParams = {};
+  const skipoffset = adConfig.skipoffset;
+  if (skipoffset !== undefined) {
+    const skippable = skipoffset >= 0;
+    skipParams.skip = skippable ? 1 : 0;
+    if (skippable) {
+      skipParams.skipmin = skipoffset + 2;
+      skipParams.skipafter = skipoffset;
+    }
+  }
+  return skipParams;
+}
+
 const MEDIA_TYPES = [
   'video/mp4', 'video/ogg', 'video/webm', 'video/aac', 'application/vnd.apple.mpegurl'
 ];
@@ -700,13 +710,6 @@ function jwplayerPlacementToCode(placement) {
 }
 
 class AdState extends State {
-  constructor(adConfig) {
-    super({
-      skippable: adConfig.skippable,
-      skipOffset: adConfig.skipOffset,
-    });
-  }
-
   updateForEvent(event) {
     const updates = {
       adTagUrl: event.tag,
@@ -742,7 +745,14 @@ class AdState extends State {
 class TimeState extends State {
   updateForEvent(event) {
     const { position, duration } = event;
+    updateState({
+      time: position,
+      duration,
+      playbackMode: this.getPlaybackMode(duration)
+    });
+  }
 
+  getPlaybackMode(duration) {
     let playbackMode;
     if (duration > 0) {
       playbackMode = 0; //vod
@@ -751,18 +761,33 @@ class TimeState extends State {
     } else {
       playbackMode = 1; //live
     }
+    return playbackMode;
+  }
 
-    updateState({
-      time: position,
-      duration,
-      playbackMode
-    });
+  // TODO is this optimization excessive ? Added in case oRTB params are requested when time events have not come in, instead of always using player API
+  getState() {
+    const superState = super.getState();
+    let duration = superState.duration;
+    if (duration === undefined) {
+       superState.duration = duration = player.getDuration();
+    }
+
+    if (superState.playbackMode === undefined) {
+      superState.playbackMode = this.getPlaybackMode(duration);
+    }
+
+    if (superState.time === undefined) {
+      superState.time = player.getPosition();
+    }
+
+    this.updateState(superState);
+    return superState;
   }
 }
 
 class State {
-  constructor(baseState) {
-    this.state = this.baseState = baseState || {};
+  constructor() {
+    this.state = {};
   }
 
   updateState(update) {
@@ -773,12 +798,8 @@ class State {
     return this.state;
   }
 
-  resetToBaseState() {
-    this.state = this.baseState;
-  }
-
   clearState() {
-    this.state = null;
+    this.state = {};
   }
 }
 
