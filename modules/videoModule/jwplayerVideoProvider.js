@@ -37,9 +37,6 @@ const jwplayerVideoFactory = function (config) {
       // trigger setupComplete
       initStates(playerConfig);
     }
-    player.on('cast', e => {
-      this.casting = e.active;
-    })
     this.player = player;
   }
 
@@ -467,7 +464,6 @@ const jwplayerVideoFactory = function (config) {
               title: item.title,
               description: item.description,
               playlistIndex: index,
-              casting: this.casting,
               // Content Tags (Required - nullable)
             };
             callback(event, payload);
@@ -559,6 +555,16 @@ const jwplayerVideoFactory = function (config) {
             callback(event, payload);
           });
           break;
+
+        case 'cast':
+          player.on('cast', e => {
+            const payload = {
+              divId,
+              type: 'cast',
+              casting: e.active
+            };
+            callback(event, payload);
+          });
       }
     });
   }
