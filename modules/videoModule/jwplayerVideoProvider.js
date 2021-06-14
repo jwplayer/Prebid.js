@@ -10,7 +10,7 @@ const jwplayerVideoFactory = function (config) {
   let pendingSeek = {};
   let supportedMediaTypes;
 
-  // TODO rething init - should be able to register events statically, before initialized.
+  // TODO rethink init - should be able to register events statically, before initialized.
   // TODO should factory throw ? This would allow surfacing of error before API is ready to be used.
   // TODO Alternatively, setupComplete and setupError are args in factory function ?
   const init = function() {
