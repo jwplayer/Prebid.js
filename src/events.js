@@ -133,6 +133,10 @@ module.exports = (function () {
     return _handlers;
   };
 
+  _public.addEvents = function (events) {
+    allEvents.concat(events);
+  }
+
   /**
    * This method can return a copy of all the events fired
    * @return {Array} array of events fired
