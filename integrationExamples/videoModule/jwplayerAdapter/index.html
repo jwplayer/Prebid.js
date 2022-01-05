@@ -47,7 +47,6 @@
         pbjs.onEvent('adImpression', event => {
           console.log('adImpression: ', event);
         });
-        pbjs.addAdUnits(adUnits);
         pbjs.setConfig({
           video: {
             providers: [{
@@ -96,6 +95,7 @@
             }]
           }
         });
+        pbjs.addAdUnits(adUnits);
         pbjs.requestBids();
       });
     </script>
