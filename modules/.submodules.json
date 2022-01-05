@@ -55,6 +55,7 @@
   ],
   "videoModule": [
     "coreVideo",
-    "jwplayerVideoProvider"
+    "jwplayerVideoProvider",
+    "videojsVideoProvider"
   ]
 }
