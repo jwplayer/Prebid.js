@@ -1,11 +1,11 @@
-<!--
+-<!--
 
 -->
 
 <html>
 
 <head>
-    <script async src="../../build/dev/prebid.js"></script>
+    <script async src="../../../build/dev/prebid.js"></script>
     <script>
       var adUnits = [{
         code: 'div-gpt-ad-51545-0',
@@ -42,17 +42,16 @@
 
       var pbjs = pbjs || {};
       pbjs.que = pbjs.que || [];
-    </script>
-    <script>
+
       pbjs.que.push(function () {
         pbjs.onEvent('adImpression', event => {
           console.log('adImpression: ', event);
         });
-        pbjs.addAdUnits(adUnits);
         pbjs.setConfig({
           video: {
             providers: [{
               divId: 'vid-div-1',
+              // vendorCode for jwplayer
               vendorCode: 1,
               playerConfig: {
                 licenseKey: "INSERT LICENSE KEY HERE",
@@ -96,6 +95,7 @@
             }]
           }
         });
+        pbjs.addAdUnits(adUnits);
         pbjs.requestBids();
       });
     </script>
@@ -110,4 +110,3 @@
 </body>
 
 </html>
-
