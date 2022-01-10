@@ -1,4 +1,3 @@
-import faker from 'faker';
 import { makeSlot } from './googletag.js';
 
 export function makeAdSlot(overrides = {}) {
@@ -20,10 +19,10 @@ export function makeAdUnit(overrides = {}) {
 export function makeBidder(overrides = {}) {
   let adapter;
   adapter = Object.assign({
-    bidder: `${faker.company.bsBuzz()}Media`,
+    bidder: 'SomeCompanyMedia',
     params: {
-      abc: faker.random.alphaNumeric(10),
-      xyz: faker.random.number({ max: 10, precision: 2 })
+      abc: 'foobar1234',
+      xyz: Math.floor((Math.random() * 10) + 2)
     },
     callBids: sinon.spy()
   }, overrides);
@@ -39,4 +38,4 @@ export function makeRequest(overrides = {}) {
   }, overrides);
 }
 
-export function randomFive() { return faker.random.number({ min: 10000, max: 99999 }); }
+export function randomFive() { return Math.floor((Math.random() * 99999) + 10000); }
