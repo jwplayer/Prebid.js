@@ -133,7 +133,7 @@ const _public = (function () {
   };
 
   _public.addEvents = function (events) {
-    allEvents.concat(events);
+    allEvents = allEvents.concat(events);
   }
 
   /**
