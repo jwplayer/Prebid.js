@@ -31,6 +31,28 @@ export const PLACEMENT = {
 };
 
 /*
+ORTB 2.5 section 5.4 - Ad Position
+ */
+export const AD_POSITION = {
+  UNKNOWN: 0,
+  ABOVE_THE_FOLD: 1,
+  BELOW_THE_FOLD: 3,
+  HEADER: 4,
+  FOOTER: 5,
+  SIDEBAR: 6,
+  FULL_SCREEN: 7
+}
+
+/*
+ORTB 2.5 section 5.11 - Playback Cessation Modes
+ */
+export const PLAYBACK_END = {
+  VIDEO_COMPLETION: 1,
+  VIEWPORT_LEAVE: 2,
+  FLOATING: 3
+}
+
+/*
 ORTB 2.5 section 5.10 - Playback Methods
  */
 export const PLAYBACK_METHODS = {
