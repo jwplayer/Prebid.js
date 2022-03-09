@@ -114,9 +114,8 @@ export function buildDfpVideoUrl(options) {
   return buildUrl({
     protocol: 'https',
     host: 'securepubads.g.doubleclick.net',
-    pathname: '/gampad/ads',
-    search: queryParams
-  });
+    pathname: '/gampad/ads'
+  }, urlComponents, { search: queryParams });
 }
 
 export function notifyTranslationModule(fn) {
