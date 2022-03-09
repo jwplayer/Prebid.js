@@ -923,7 +923,13 @@ export function adStateFactory() {
       waterfallCount: event.wcount,
       adPodCount: event.podcount,
       adPodIndex: event.sequence,
+      wrapperAdIds: event.wrapperAdIds
     };
+
+    if (event.client === 'googima' && !updates.wrapperAdIds) {
+      updates.wrapperAdIds = parseImaAdWrapperIds(event);
+    }
+
     this.updateState(updates);
   }
 
@@ -948,6 +954,13 @@ export function adStateFactory() {
       case 'floating':
         return PLACEMENT.INTERSTITIAL_SLIDER_FLOATING;
     }
+  }
+
+  function parseImaAdWrapperIds(adEvent) {
+    const ima = adEvent.ima;
+    const ad = ima && ima.ad;
+    const h = ad && ad.h;
+    return h && h.adWrapperIds;
   }
 
   return adState;

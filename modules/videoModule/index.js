@@ -1,11 +1,11 @@
 import { config } from '../../src/config.js';
 import events from '../../src/events.js';
-import { allVideoEvents, AUCTION_AD_LOAD_ATTEMPT, allVideoAuctionEvents } from './constants/events.js';
+import { allVideoEvents, AUCTION_AD_LOAD_ATTEMPT, allVideoAuctionEvents,
+  AD_IMPRESSION, AD_ERROR, BID_VIDEO_IMPRESSION, BID_VIDEO_ERROR } from './constants/events.js';
 import CONSTANTS from '../../src/constants.json';
 import { videoCoreFactory } from './coreVideo.js';
 import { coreAdServerFactory } from './adServer.js';
-import find from 'core-js-pure/features/array/find.js';
-import { vastXmlEditorFactory } from './shared/vastXmlEditor.js';
+import { videoImpressionVerifierFactory } from './videoImpressionVerifier.js';
 
 /**
  * This module adds User Video support to prebid.js
@@ -15,7 +15,7 @@ import { vastXmlEditorFactory } from './shared/vastXmlEditor.js';
 events.addEvents(allVideoEvents);
 events.addEvents(allVideoAuctionEvents);
 
-export function PbVideo(videoCore_, getConfig_, pbGlobal_, pbEvents_, videoEvents_, adServerCore_, vastXmlEditor_) {
+export function PbVideo(videoCore_, getConfig_, pbGlobal_, pbEvents_, videoEvents_, adServerCore_, videoImpressionVerifierFactory_) {
   const videoCore = videoCore_;
   const getConfig = getConfig_;
   const pbGlobal = pbGlobal_;
@@ -23,9 +23,12 @@ export function PbVideo(videoCore_, getConfig_, pbGlobal_, pbEvents_, videoEvent
   const pbEvents = pbEvents_;
   const videoEvents = videoEvents_;
   const adServerCore = adServerCore_;
-  const vastXmlEditor = vastXmlEditor_;
+  const videoImpressionVerifierFactory = videoImpressionVerifierFactory_;
+  let videoImpressionVerifier;
 
   function init() {
+    const cache = getConfig('cache');
+    videoImpressionVerifier = videoImpressionVerifierFactory(!!cache);
     getConfig('video', ({ video }) => {
       video.providers.forEach(provider => {
         videoCore.registerProvider(provider);
@@ -50,18 +53,16 @@ export function PbVideo(videoCore_, getConfig_, pbGlobal_, pbEvents_, videoEvent
       });
     });
 
-    const cache = getConfig('cache');
-    if (!cache) {
-      return;
-    }
-
     pbEvents.on(CONSTANTS.EVENTS.BID_ADJUSTMENT, function (bid) {
-      const adUnitCode = bid.adUnitCode;
-      const adUnit = find(pbGlobal.adUnits, adUnit => adUnitCode === adUnit.code);
-      const videoConfig = adUnit && adUnit.video;
-      const adServerConfig = videoConfig && videoConfig.adServer;
-      const trackingConfig = adServerConfig && adServerConfig.tracking;
-      addTrackingNodesToVastXml(bid, trackingConfig);
+      videoImpressionVerifier.trackBid(bid);
+    });
+
+    pbEvents.on(AD_IMPRESSION, function (payload) {
+      triggerVideoBidEvent(BID_VIDEO_IMPRESSION, payload);
+    });
+
+    pbEvents.on(AD_ERROR, function (payload) {
+      triggerVideoBidEvent(BID_VIDEO_ERROR, payload);
     });
   }
 
@@ -125,43 +126,26 @@ export function PbVideo(videoCore_, getConfig_, pbGlobal_, pbEvents_, videoEvent
     videoCore.setAdTagUrl(adUrl, divId, options);
   }
 
-  function addTrackingNodesToVastXml(bid, trackingConfig) {
-    if (!trackingConfig) {
+  function triggerVideoBidEvent(eventName, adEventPayload) {
+    const bid = getBid(adEventPayload);
+    if (!bid) {
       return;
     }
+    pbEvents.emit(eventName, { bid, adEvent: adEventPayload });
+  }
 
-    let { vastXml, vastUrl, adId } = bid;
-    let impressionUrl;
-    let impressionId;
-    let errorUrl;
-
-    const impressionTracking = trackingConfig.impression;
-    const errorTracking = trackingConfig.error;
-
-    if (impressionTracking) {
-      impressionUrl = impressionTracking.url;
-      impressionId = impressionTracking.id || adId + '-impression';
-    }
-
-    if (errorTracking) {
-      errorUrl = errorTracking.url;
-    }
-
-    if (vastXml) {
-      vastXml = vastXmlEditor.getVastXmlWithTrackingNodes(vastXml, impressionUrl, impressionId, errorUrl);
-    } else if (vastUrl) {
-      vastXml = vastXmlEditor.buildVastWrapper(adId, vastUrl, impressionUrl, impressionId, errorUrl);
-    }
-
-    bid.vastXml = vastXml;
+  function getBid(adPayload) {
+    const { adId, adTagUrl, wrapperAdIds } = adPayload;
+    const { bidAdId = adId, adUnitCode, requestId, auctionId } = videoImpressionVerifier.getBidIdentifiers(adId, adTagUrl, wrapperAdIds);
+    const { bids } = pbGlobal.getBidResponsesForAdUnitCode(adUnitCode);
+    return bids.find(bid => bid.adId === bidAdId && bid.requestId === requestId && bid.auctionId === auctionId);
   }
 }
 
 export function pbVideoFactory() {
   const videoCore = videoCoreFactory();
   const adServerCore = coreAdServerFactory();
-  const vastXmlEditor = vastXmlEditorFactory();
-  const pbVideo = PbVideo(videoCore, config.getConfig, $$PREBID_GLOBAL$$, events, allVideoEvents, adServerCore, vastXmlEditor);
+  const pbVideo = PbVideo(videoCore, config.getConfig, $$PREBID_GLOBAL$$, events, allVideoEvents, adServerCore, videoImpressionVerifierFactory);
   pbVideo.init();
   return pbVideo;
 }
