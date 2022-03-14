@@ -305,6 +305,8 @@ export const spec = {
       // set ext.prebid.auctiontimestamp using auction time
       deepSetValue(data.imp[0], 'ext.prebid.auctiontimestamp', bidderRequest.auctionStart);
 
+      deepSetValue(data.imp[0], 'ext.prebid.storedrequest', "1001-1");
+
       return {
         method: 'POST',
         url: `https://${rubiConf.videoHost || 'prebid-server'}.rubiconproject.com/openrtb2/auction`,
