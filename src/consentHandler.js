@@ -4,6 +4,7 @@ export class ConsentHandler {
   constructor() {
     this.enabled = false;
     this.ready = false;
+    this._promise = null;
     this.reset();
   }
 
@@ -31,11 +32,11 @@ export class ConsentHandler {
     if (!this.enabled) {
       this.resolve(null);
     }
-    return this.promise;
+    return this._promise;
   }
 
   set promise(prom) {
-    this.promise = prom;
+    this._promise = prom;
   }
 
   setConsentData(data, time = timestamp()) {
