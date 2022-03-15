@@ -1,13 +1,6 @@
 import {isStr, timestamp} from './utils.js';
 
 export class ConsentHandler {
-  enabled;
-  data;
-  promise;
-  resolve;
-  ready;
-  generatedTime;
-
   constructor() {
     this.reset();
   }
