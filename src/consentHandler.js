@@ -9,16 +9,17 @@ export class ConsentHandler {
    * reset this handler (mainly for tests)
    */
   reset() {
-    this.promise = new Promise((resolve) => {
+    const promise = new Promise((resolve) => {
       this.resolve = (data) => {
-        this.ready = true;
+        this.setReady(true);
         this.data = data;
         resolve(data);
       };
     });
-    this.enabled = false;
+    this.setPromise(promise);
+    this.setEnabled(false);
     this.data = null;
-    this.ready = false;
+    this.setReady(false);
     this.generatedTime = null;
   }
 
@@ -37,11 +38,19 @@ export class ConsentHandler {
     return this.enabled;
   }
 
+  setEnabled(flag) {
+    this.enabled = flag;
+  }
+
   /**
    * @returns {boolean} true if consent data has been resolved (it may be `null` if the resolution failed).
    */
   get ready() {
     return this.ready;
+  }
+
+  setReady(flag) {
+    this.ready = flag;
   }
 
   /**
@@ -52,6 +61,10 @@ export class ConsentHandler {
       this.resolve(null);
     }
     return this.promise;
+  }
+
+  setPromise(prom) {
+    this.promise = prom;
   }
 
   setConsentData(data, time = timestamp()) {
