@@ -33,6 +33,14 @@ export class ConsentHandler {
   }
 
   /**
+   * Enable this consent handler. This should be called by the relevant consent management module
+   * on initialization.
+   */
+  enable() {
+    this.enabled = true;
+  }
+
+  /**
    * @returns a promise than resolves to the consent data, or null if no consent data is available
    */
   get promise() {
