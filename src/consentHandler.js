@@ -1,11 +1,11 @@
 import {isStr, timestamp} from './utils.js';
 
 export class ConsentHandler {
-  #enabled;
-  #data;
-  #promise;
-  #resolve;
-  #ready;
+  enabled;
+  data;
+  promise;
+  resolve;
+  ready;
   generatedTime;
 
   constructor() {
@@ -16,16 +16,16 @@ export class ConsentHandler {
    * reset this handler (mainly for tests)
    */
   reset() {
-    this.#promise = new Promise((resolve) => {
-      this.#resolve = (data) => {
-        this.#ready = true;
-        this.#data = data;
+    this.promise = new Promise((resolve) => {
+      this.resolve = (data) => {
+        this.ready = true;
+        this.data = data;
         resolve(data);
       };
     });
-    this.#enabled = false;
-    this.#data = null;
-    this.#ready = false;
+    this.enabled = false;
+    this.data = null;
+    this.ready = false;
     this.generatedTime = null;
   }
 
@@ -34,43 +34,44 @@ export class ConsentHandler {
    * on initialization.
    */
   enable() {
-    this.#enabled = true;
+    this.enabled = true;
   }
 
   /**
    * @returns {boolean} true if the related consent management module is enabled.
    */
   get enabled() {
-    return this.#enabled;
+    return this.enabled;
   }
 
   /**
    * @returns {boolean} true if consent data has been resolved (it may be `null` if the resolution failed).
    */
   get ready() {
-    return this.#ready;
+    return this.ready;
   }
 
   /**
    * @returns a promise than resolves to the consent data, or null if no consent data is available
    */
   get promise() {
-    if (this.#ready) {
-      return Promise.resolve(this.#data);
+    if (this.ready) {
+      return Promise.resolve(this.data);
     }
-    if (!this.#enabled) {
-      this.#resolve(null);
+
+    if (!this.enabled) {
+      this.resolve(null);
     }
-    return this.#promise;
+    return this.promise;
   }
 
   setConsentData(data, time = timestamp()) {
     this.generatedTime = time;
-    this.#resolve(data);
+    this.resolve(data);
   }
 
   getConsentData() {
-    return this.#data;
+    return this.data;
   }
 }
 

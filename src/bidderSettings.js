@@ -30,7 +30,7 @@ export class ScopedSettings {
    * @returns {*}
    */
   getOwn(scope, path) {
-    scope = this.#resolveScope(scope);
+    scope = this.resolveScope(scope);
     return deepAccess(this.getSettings(), `${scope}.${path}`)
   }
 
@@ -52,11 +52,11 @@ export class ScopedSettings {
    * @returns all settings in the given scope, *without* any of the default settings.
    */
   ownSettingsFor(scope) {
-    scope = this.#resolveScope(scope);
+    scope = this.resolveScope(scope);
     return this.getSettings()[scope] || {};
   }
 
-  #resolveScope(scope) {
+  resolveScope(scope) {
     if (scope == null) {
       return this.defaultScope;
     } else {
