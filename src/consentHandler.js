@@ -2,13 +2,6 @@ import {isStr, timestamp} from './utils.js';
 import {defer, GreedyPromise} from './utils/promise.js';
 
 export class ConsentHandler {
-  enabled;
-  data;
-  promise;
-  resolve;
-  ready;
-  generatedTime;
-
   constructor() {
     this.reset();
   }
