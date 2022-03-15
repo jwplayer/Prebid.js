@@ -2,6 +2,8 @@ import {isStr, timestamp} from './utils.js';
 
 export class ConsentHandler {
   constructor() {
+    this.enabled = false;
+    this.ready = false;
     this.reset();
   }
 
@@ -9,48 +11,17 @@ export class ConsentHandler {
    * reset this handler (mainly for tests)
    */
   reset() {
-    const promise = new Promise((resolve) => {
+    this.promise = new Promise((resolve) => {
       this.resolve = (data) => {
-        this.setReady(true);
+        this.ready = true;
         this.data = data;
         resolve(data);
       };
     });
-    this.setPromise(promise);
-    this.setEnabled(false);
+    this.enabled = false;
     this.data = null;
-    this.setReady(false);
+    this.ready = false;
     this.generatedTime = null;
-  }
-
-  /**
-   * Enable this consent handler. This should be called by the relevant consent management module
-   * on initialization.
-   */
-  enable() {
-    this.enabled = true;
-  }
-
-  /**
-   * @returns {boolean} true if the related consent management module is enabled.
-   */
-  get enabled() {
-    return this.enabled;
-  }
-
-  setEnabled(flag) {
-    this.enabled = flag;
-  }
-
-  /**
-   * @returns {boolean} true if consent data has been resolved (it may be `null` if the resolution failed).
-   */
-  get ready() {
-    return this.ready;
-  }
-
-  setReady(flag) {
-    this.ready = flag;
   }
 
   /**
@@ -67,7 +38,7 @@ export class ConsentHandler {
     return this.promise;
   }
 
-  setPromise(prom) {
+  set promise(prom) {
     this.promise = prom;
   }
 
