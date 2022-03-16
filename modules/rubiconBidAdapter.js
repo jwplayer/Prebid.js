@@ -305,7 +305,11 @@ export const spec = {
       // set ext.prebid.auctiontimestamp using auction time
       deepSetValue(data.imp[0], 'ext.prebid.auctiontimestamp', bidderRequest.auctionStart);
 
-      deepSetValue(data.imp[0], 'ext.prebid.storedrequest', "1001-1");
+      if (!data.test) {
+        deepSetValue(data.imp[0], 'ext.prebid.storedrequest.id', '1001-1');
+      } else {
+        deepSetValue(data, 'ext.prebid.bidders.rubicon.debug.cpmOverride', 3);
+      }
 
       return {
         method: 'POST',
