@@ -596,7 +596,54 @@ export const spec = {
    * @return {Bid[]} An array of bids which
    */
   interpretResponse: function (responseObj, {bidRequest}) {
-    responseObj = responseObj.body;
+    responseObj = {
+      "id": '652a58d7-a532-4663-941b-b401adb91589',
+      "seatbid": [
+        {
+          "bid": [
+            {
+              "id": "8b53f3f7-4e68-4f3b-8534-c48952e4e094",
+              "impid": "3h14127z88i2",
+              "price": 100,
+              "adomain": [
+                "unitedway.org"
+              ],
+              "crid": "2238:2207954",
+              "dealid": "664950",
+              "ext": {
+                "prebid": {
+                  "type": "video",
+                  "targeting": [],
+                  "cache": {
+                    "vastXml": {
+                      "url": "https:\/\/prebid-server.rubiconproject.com\/cache?uuid=ba81319f-0e83-4d9f-bbe5-24363c103491",
+                      "cacheId": "ba81319f-0e83-4d9f-bbe5-24363c103491"
+                    }
+                  }
+                },
+                "bidder": {
+                  "rp": {
+                    "advid": 611288,
+                    "mime": "application\/javascript",
+                    "size_id": 201
+                  }
+                }
+              }
+            }
+          ],
+          "seat": "rubicon",
+          "group": 0
+        }
+      ],
+      "cur": "USD",
+      "ext": {
+        "responsetimemillis": {
+          "cache": 3,
+          "rubicon": 131
+        },
+        "tmaxrequest": 1000
+      }
+    };
 
     // check overall response
     if (!responseObj || typeof responseObj !== 'object') {
