@@ -153,4 +153,4 @@ const _public = (function () {
   return _public;
 }());
 
-export const {on, off, get, getEvents, emit} = _public;
+export const {on, off, get, getEvents, emit, addEvents} = _public;
