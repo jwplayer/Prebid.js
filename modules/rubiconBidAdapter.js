@@ -680,10 +680,8 @@ export const spec = {
             // try to get cache values from 'response.ext.prebid.cache.js'
             // else try 'bid.ext.prebid.targeting' as fallback
             if (bid.ext.prebid.cache && typeof bid.ext.prebid.cache.vastXml === 'object' && bid.ext.prebid.cache.vastXml.cacheId && bid.ext.prebid.cache.vastXml.url) {
-              bidObject.videoCacheKey = bid.ext.prebid.cache.vastXml.cacheId;
               bidObject.vastUrl = bid.ext.prebid.cache.vastXml.url;
             } else if (extPrebidTargeting && extPrebidTargeting.hb_uuid && extPrebidTargeting.hb_cache_host && extPrebidTargeting.hb_cache_path) {
-              bidObject.videoCacheKey = extPrebidTargeting.hb_uuid;
               // build url using key and cache host
               bidObject.vastUrl = `https://${extPrebidTargeting.hb_cache_host}${extPrebidTargeting.hb_cache_path}?uuid=${extPrebidTargeting.hb_uuid}`;
             }
@@ -761,7 +759,6 @@ export const spec = {
           bid.height = associatedBidRequest.params.video.playerHeight;
           bid.vastUrl = ad.creative_depot_url;
           bid.impression_id = ad.impression_id;
-          bid.videoCacheKey = ad.impression_id;
         } else {
           bid.ad = _renderCreative(ad.script, ad.impression_id);
           [bid.width, bid.height] = sizeMap[ad.size_id].split('x').map(num => Number(num));
