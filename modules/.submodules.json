@@ -73,8 +73,5 @@
   "videoModule": [
     "coreVideo",
     "jwplayerVideoProvider"
-  ],
-  "adServer": [
-    "gamAdServerSubmodule"
   ]
 }
