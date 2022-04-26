@@ -39,6 +39,7 @@ module.exports = {
         }
       }
     });
+    console.log(entry);
     return entry;
   })(),
   output: {

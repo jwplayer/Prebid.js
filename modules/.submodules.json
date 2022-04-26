@@ -69,8 +69,5 @@
   "fpdModule": [
     "enrichmentFpdModule",
     "validationFpdModule"
-  ],
-  "videoModule": [
-    "jwplayerVideoProvider"
   ]
 }
