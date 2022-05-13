@@ -71,7 +71,6 @@
     "validationFpdModule"
   ],
   "videoModule": [
-    "coreVideo",
     "jwplayerVideoProvider"
   ]
 }
