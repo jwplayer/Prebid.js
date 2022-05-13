@@ -30,7 +30,8 @@ module.exports = {
         import: './src/prebid.js'
       },
       'video-module': {
-        import: './modules/videoModule/index.js'
+        import: ['./modules/videoModule/index.js', './modules/videoModule/constants/ortb.js', './modules/videoModule/constants/enums.js'],
+        dependOn: 'prebid-core'
       }
     };
     const selectedModules = new Set(helpers.getArgModules());
