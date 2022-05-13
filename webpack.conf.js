@@ -28,13 +28,22 @@ module.exports = {
     const entry = {
       'prebid-core': {
         import: './src/prebid.js'
-      },
-      'video-module': {
-        import: ['./modules/videoModule/index.js', './modules/videoModule/constants/ortb.js', './modules/videoModule/constants/enums.js'],
-        dependOn: 'prebid-core'
       }
     };
     const selectedModules = new Set(helpers.getArgModules());
+
+    function setDependency(dependencyName) {
+      if (entry[dependencyName]) {
+        return;
+      }
+
+      const dependencyEntry = helpers.getDependencyEntry(dependencyName);
+      if (!dependencyEntry) {
+        return;
+      }
+
+      entry[dependencyName] = dependencyEntry;
+    }
 
     Object.entries(helpers.getModules()).forEach(([fn, mod]) => {
       if (selectedModules.size === 0 || selectedModules.has(mod)) {
@@ -45,6 +54,7 @@ module.exports = {
 
         const extraDependencies = helpers.getDependencies(mod);
         if (extraDependencies) {
+          extraDependencies.forEach(dependency => setDependency(dependency));
           entry[mod].dependOn = ['prebid-core'].concat(extraDependencies);
         }
       }
