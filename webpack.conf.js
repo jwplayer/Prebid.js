@@ -28,6 +28,9 @@ module.exports = {
     const entry = {
       'prebid-core': {
         import: './src/prebid.js'
+      },
+      'video-module': {
+        import: './modules/videoModule/index.js'
       }
     };
     const selectedModules = new Set(helpers.getArgModules());
@@ -35,7 +38,7 @@ module.exports = {
       if (selectedModules.size === 0 || selectedModules.has(mod)) {
         entry[mod] = {
           import: fn,
-          dependOn: 'prebid-core'
+          dependOn: ['prebid-core', 'video-module']
         }
       }
     });

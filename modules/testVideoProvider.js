@@ -10,6 +10,7 @@ import {
 import stateFactory from '../src/shared/state.js';
 import { VIDEO_JS_VENDOR } from './videoModule/constants/vendorCodes.js';
 import { submodule } from '../src/hook.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
 
 export function testProvider() {
   const state = stateFactory();
@@ -18,6 +19,8 @@ export function testProvider() {
     AUTOSTART_BLOCKED, PLAY_ATTEMPT_FAILED, CONTENT_LOADED, PLAY, PAUSE, BUFFER, TIME, SEEK_START, SEEK_END, MUTE, VOLUME,
     RENDITION_UPDATE, ERROR, COMPLETE, PLAYLIST_COMPLETE, FULLSCREEN, PLAYER_RESIZE, VIEWABLE, CAST, PLAYBACK_MODE);
 }
+
+console.log(registerBidder);
 
 testProvider.code = VIDEO_JS_VENDOR;
 
