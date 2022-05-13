@@ -35,11 +35,17 @@ module.exports = {
       }
     };
     const selectedModules = new Set(helpers.getArgModules());
+
     Object.entries(helpers.getModules()).forEach(([fn, mod]) => {
       if (selectedModules.size === 0 || selectedModules.has(mod)) {
         entry[mod] = {
           import: fn,
-          dependOn: ['prebid-core', 'video-module']
+          dependOn: 'prebid-core'
+        };
+
+        const extraDependencies = helpers.getDependencies(mod);
+        if (extraDependencies) {
+          entry[mod].dependOn = ['prebid-core'].concat(extraDependencies);
         }
       }
     });

@@ -7,6 +7,7 @@ const through = require('through2');
 const _ = require('lodash');
 const gutil = require('gulp-util');
 const submodules = require('./modules/.submodules.json');
+const dependencies = require('./modules/.dependencies.json');
 
 const MODULE_PATH = './modules';
 const BUILD_PATH = './build/dist';
@@ -69,6 +70,9 @@ module.exports = {
     });
 
     return modules;
+  },
+  getDependencies(moduleName) {
+    return dependencies[moduleName];
   },
   getModules: _.memoize(function(externalModules) {
     externalModules = externalModules || [];
