@@ -193,7 +193,7 @@ export function JWPlayerProvider(config, jwplayer_, adState_, timeState_, callba
 
   function offEvents(events, callback) {
     events.forEach(event => {
-      const jwEvent = utils.getJwEvent(event, prebidVideoEvents);
+      const jwEvent = utils.getJwEvent(event);
       if (!callback) {
         player.off(jwEvent);
         return;
