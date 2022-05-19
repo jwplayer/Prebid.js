@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { PbVideo } from 'modules/videoModule/index.js';
+import { PbVideo } from 'libraries/videoModule/index.js';
 import CONSTANTS from 'src/constants.json';
-import { AD_IMPRESSION, AD_ERROR, BID_IMPRESSION, BID_ERROR } from 'modules/videoModule/constants/events.js';
+import { AD_IMPRESSION, AD_ERROR, BID_IMPRESSION, BID_ERROR } from 'libraries/videoModule/constants/events.js';
 
 let ortbParamsMock;
 let videoCoreMock;

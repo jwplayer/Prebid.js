@@ -69,5 +69,17 @@
   "fpdModule": [
     "enrichmentFpdModule",
     "validationFpdModule"
-  ]
+  ],
+  "libraries": {
+    "video": {
+      "files": [
+        "./libraries/videoModule/index.js", "./libraries/videoModule/constants/ortb.js", "./libraries/videoModule/constants/enums.js"
+      ],
+      "dependants": [
+        "jwplayerVideoProvider",
+        "testVideoProvider"
+      ]
+
+    }
+  }
 }

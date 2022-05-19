@@ -1,15 +1,15 @@
 import {
   PROTOCOLS, API_FRAMEWORKS, VIDEO_MIME_TYPE, PLAYBACK_METHODS, PLACEMENT, VPAID_MIME_TYPE
-} from './videoModule/constants/ortb.js';
-import { PLAYBACK_MODE } from './videoModule/constants/enums.js';
+} from '../libraries/videoModule/constants/ortb.js';
+import { PLAYBACK_MODE } from '../libraries/videoModule/constants/enums.js';
 import {
   SETUP_COMPLETE, SETUP_FAILED, DESTROYED, AD_REQUEST, AD_BREAK_START, AD_LOADED, AD_STARTED, AD_IMPRESSION, AD_PLAY,
   AD_TIME, AD_PAUSE, AD_CLICK, AD_SKIPPED, AD_ERROR, AD_COMPLETE, AD_BREAK_END, PLAYLIST, PLAYBACK_REQUEST,
   AUTOSTART_BLOCKED, PLAY_ATTEMPT_FAILED, CONTENT_LOADED, PLAY, PAUSE, BUFFER, TIME, SEEK_START, SEEK_END, MUTE, VOLUME,
   RENDITION_UPDATE, ERROR, COMPLETE, PLAYLIST_COMPLETE, FULLSCREEN, PLAYER_RESIZE, VIEWABLE, CAST
-} from './videoModule/constants/events.js';
-import stateFactory from './videoModule/shared/state.js';
-import { VIDEO_JS_VENDOR } from './videoModule/constants/vendorCodes.js';
+} from '../libraries/videoModule/constants/events.js';
+import stateFactory from '../libraries/videoModule/shared/state.js';
+import { VIDEO_JS_VENDOR } from '../libraries/videoModule/constants/vendorCodes.js';
 import { submodule } from '../src/hook.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 
