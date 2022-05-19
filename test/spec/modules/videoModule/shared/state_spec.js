@@ -1,4 +1,4 @@
-import stateFactory from 'libraries/videoModule/shared/state.js';
+import stateFactory from 'libraries/video/shared/state.js';
 import { expect } from 'chai';
 
 describe('State', function () {

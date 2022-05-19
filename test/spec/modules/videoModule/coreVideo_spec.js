@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { VideoCore } from 'libraries/videoModule/coreVideo.js';
+import { VideoCore } from 'libraries/video/coreVideo.js';
 
 describe('Video Core', function () {
   const mockSubmodule = {

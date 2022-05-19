@@ -1,6 +1,0 @@
-{
-  "video-module": {
-    "import": ["./modules/videoModule/index.js", "./modules/videoModule/constants/ortb.js", "./modules/videoModule/constants/enums.js"],
-    "dependOn": "prebid-core"
-  }
-}

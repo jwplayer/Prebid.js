@@ -6,9 +6,9 @@ const MANIFEST = 'package.json';
 const through = require('through2');
 const _ = require('lodash');
 const gutil = require('gulp-util');
-const submodules = require('./modules/.submodules.json');
-const dependencies = require('./modules/.dependencies.json');
-const dependencyEntries = require('./modules/.dependencyEntries.json');
+const dependencyMap = require('./modules/.submodules.json');
+const submodules = dependencyMap.parentModules;
+const libraries = dependencyMap.libraries;
 
 const MODULE_PATH = './modules';
 const BUILD_PATH = './build/dist';
@@ -72,11 +72,20 @@ module.exports = {
 
     return modules;
   },
-  getDependencies(moduleName) {
-    return dependencies[moduleName];
+  getParentLibraries(moduleName) {
+    const libraryNames = [];
+    Object.keys(libraries).forEach(libraryName => {
+      const library = libraries[libraryName];
+      if (library.dependants.includes(moduleName)) {
+        libraryNames.push(libraryName);
+      }
+    });
+    return libraryNames;
   },
-  getDependencyEntry(dependencyName) {
-    return dependencyEntries[dependencyName];
+  getLibraryFiles(name) {
+    const library = libraries[name];
+    const files = library.files.map(file => require.resolve(file, {paths: ['./libraries/' + name + '/']}));
+    return files;
   },
   getModules: _.memoize(function(externalModules) {
     externalModules = externalModules || [];
