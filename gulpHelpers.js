@@ -94,6 +94,9 @@ module.exports = {
     const files = library.files.map(file => require.resolve(file, {paths: ['./libraries/' + name + '/']}));
     return files;
   },
+  isLibrary(name) {
+    return !!libraries[name];
+  },
   getModules: _.memoize(function(externalModules) {
     externalModules = externalModules || [];
     var internalModules;

@@ -32,36 +32,24 @@ module.exports = {
     };
     const selectedModules = new Set(helpers.getArgModules());
 
-    function setLibraryDependency(libraryName) {
-      if (entry[libraryName]) {
-        return;
-      }
-
-      const libraryFiles = helpers.getLibraryFiles(libraryName);
-      if (!libraryFiles) {
-        return;
-      }
-
-      const libraryEntry = {
-        import: libraryFiles,
-        dependOn: 'prebid-core'
-      };
-
-      entry[libraryName] = libraryEntry;
-    }
-
     Object.entries(helpers.getModules()).forEach(([fn, mod]) => {
       if (selectedModules.size === 0 || selectedModules.has(mod)) {
-        entry[mod] = {
+        const moduleEntry = {
           import: fn,
           dependOn: 'prebid-core'
         };
 
+        if (helpers.isLibrary(mod)) {
+          const libraryFiles = helpers.getLibraryFiles(mod);
+          moduleEntry.import = libraryFiles || moduleEntry.import;
+        }
+
         const libraries = helpers.getParentLibraries(mod);
         if (libraries.length) {
-          libraries.forEach(libraryName => setLibraryDependency(libraryName));
-          entry[mod].dependOn = ['prebid-core'].concat(libraries);
+          moduleEntry.dependOn = ['prebid-core'].concat(libraries);
         }
+
+        entry[mod] = moduleEntry;
       }
     });
     return entry;
