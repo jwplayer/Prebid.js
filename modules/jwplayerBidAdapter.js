@@ -112,7 +112,14 @@ export const spec = {
     return bidResponses;
   },
 
-  getUserSyncs: function(syncOptions, serverResponses, gdprConsent, uspConsent) {},
+  getUserSyncs: function(syncOptions, serverResponses, gdprConsent) {
+    if (syncOptions.iframeEnabled && hasPurpose1Consent({gdprConsent})) {
+      return [{
+        type: 'iframe',
+        url: 'https://acdn.adnxs.com/dmp/async_usersync.html'
+      }];
+    }
+  },
 
   // Optional?
   // onTimeout: function(timeoutData) {},
