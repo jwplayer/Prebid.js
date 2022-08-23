@@ -11,15 +11,24 @@
 
 <head>
     <script async src="../../build/dist/prebid.js"></script>
+    <!--<script async src="../../build/dev/prebid.js"></script>!-->
     <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
     <script>
         var FAILSAFE_TIMEOUT = 3300;
         var PREBID_TIMEOUT = 1000;
+        // var PREBID_TIMEOUT = 2000;
         var adUnits = [{
             code: 'div-gpt-ad-51545-0',
             sizes: [[300, 250], [600, 500]],
             mediaTypes: {
                 banner: {
+                /*video: {
+                    mimes: [
+                        "video/mp4",
+                        "video/x-flv",
+                        "application/x-shockwave-flash",
+                        "application/javascript"
+                    ],*/
                     sizes: [[300, 250], [600, 500]]
                 }
             },
@@ -30,6 +39,12 @@
                     siteId: '300',
                     size: [300, 250]
                 }
+                /*
+                bidder: 'jwplayer',
+                params: {
+                    placementId: '24399774',
+                    publisherId: '1000'
+                }*/
             }]
         }];
         var pbjs = pbjs || {};
@@ -64,6 +79,26 @@
                         }
                     }
                 }
+                /*
+                userSync: {
+                    filterSettings: {
+                        iframe: {
+                            bidders: ['jwplayer']
+                        }
+                    }
+                },
+                consentManagement: {
+                    gdpr: {
+                        cmpApi: 'static',
+                        allowAuctionWithoutConsent: true,
+                        consentData: {
+                            'gdprApplies': true,
+                            'hasGlobalScope': false,
+                            'consentData': 'BOOgjO9OOgjO9APABAENAi-AAAAWd7_______9____7_9uz_Gv_r_ff_3nW0739P1A_r_Oz_rm_-zzV44_lpQQRCEA',
+                            'metadata': 'BOOgjO9OOgjO9APABAENAi-AAAAWd7_______9____7_9uz_Gv_r_ff_3nW0739P1A_r_Oz_rm_-zzV44_lpQQRCEA',
+                        }
+                    }
+                },*/
             });
             pbjs.requestBids({
                 bidsBackHandler: sendAdserverRequest,

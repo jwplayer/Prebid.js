@@ -7,7 +7,8 @@ import {
   deepSetValue } from '../src/utils.js';
 import { config } from '../src/config.js';
 const BIDDER_CODE = 'jwplayer';
-const URL = 'https://ib.adnxs.com/openrtb2/prebid';
+const URL = 'http://jwplayer-useast.adnxs.com/openrtb2?member_id=12564';
+// const URL = 'http://vpb-server.local.jwplayer.com:8000/openrtb2/auction';
 
 const GVLID = 1046;
 const SUPPORTED_AD_TYPES = [VIDEO];
@@ -47,7 +48,7 @@ export const spec = {
       return false;
     }
 
-    return !!bid.params.placementId && !!bid.params.pubId;
+    return !!bid.params.placementId && !!bid.params.publisherId;
   },
 
   /**
@@ -84,8 +85,8 @@ export const spec = {
     const bidResponses = [];
     const serverResponseBody = serverResponse.body;
 
-    const bidId = serverResponse.bidid;
-    const cur = serverResponse.cur;
+    const bidId = serverResponseBody.id;
+    const cur = serverResponseBody.cur;
 
     if (serverResponseBody && isArray(serverResponseBody.seatbid)) {
       serverResponseBody.seatbid.forEach(seatBids => {
@@ -116,7 +117,8 @@ export const spec = {
     if (syncOptions.iframeEnabled && hasPurpose1Consent({gdprConsent})) {
       return [{
         type: 'iframe',
-        url: 'https://acdn.adnxs.com/dmp/async_usersync.html'
+        url: 'http://jwplayer-useast.adnxs.com/cookie_sync?member_id=12564'
+        // url: 'http://vpb-server.local.jwplayer.com:8000/cookie_sync'
       }];
     }
   },
@@ -131,8 +133,9 @@ export const spec = {
 function buildRequest(bidRequest, bidderRequest) {
   const openrtbRequest = {
     id: bidRequest.bidId,
+    // tmax: 1000,
     imp: buildRequestImpression(bidRequest, bidderRequest),
-    site: buildRequestSite(bidderRequest),
+    site: buildRequestSite(bidRequest, bidderRequest),
     device: buildRequestDevice()
   };
 
@@ -184,8 +187,8 @@ function buildImpressionVideo(bidRequest) {
 
 function buildImpressionExtension(bidRequest) {
   return {
-    appnexus: {
-      placement_id: bidRequest.params.placementId
+    jwplayer: {
+      placementId: bidRequest.params.placementId
     }
   };
 }
@@ -209,7 +212,7 @@ function buildBidFloorData(bidRequest) {
   return floorData;
 }
 
-function buildRequestSite(bidderRequest) {
+function buildRequestSite(bidRequest, bidderRequest) {
   const site = config.getConfig('ortb2.site') || {};
 
   site.domain = site.domain || config.publisherDomain || window.location.hostname;
@@ -220,13 +223,47 @@ function buildRequestSite(bidderRequest) {
     site.ref = referer;
   }
 
+  site.publisher = {
+    // id: '1',
+    ext: {
+      jwplayer: {
+        publisherId: bidRequest.params.publisherId
+      }
+    }
+  };
+
+  /* site.content = {
+    id: "MEDIA_ID", // string
+    title: "MEDIA_TITLE", // string
+    url: "MEDIA_URL", // string
+    data: [{
+        segment:  [{value: "123456"}],
+        name: "jwplayer.com",
+      ext: { segtax: 502 }
+    }],
+    ext: {
+      description: "MEDIA_DESCRIPTION" // string
+    }
+  }*/ 
+
   return site;
 }
 
 function buildRequestDevice() {
   return {
-    ua: navigator.userAgent
+    ua: navigator.userAgent,
+    // ip: "192.236.20.76"
   };
+}
+
+function hasPurpose1Consent(bidderRequest) {
+  let result = true;
+  if (bidderRequest && bidderRequest.gdprConsent) {
+    if (bidderRequest.gdprConsent.gdprApplies && bidderRequest.gdprConsent.apiVersion === 2) {
+      result = !!(deepAccess(bidderRequest.gdprConsent, 'vendorData.purpose.consents.1') === true);
+    }
+  }
+  return result;
 }
 
 registerBidder(spec);

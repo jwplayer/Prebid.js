@@ -18,11 +18,11 @@ describe('jwplayer adapter tests', function() {
 
   describe('isBidRequestValid', function() {
     it('passes when the bid includes a placement ID and a publisher ID', function() {
-      assert(spec.isBidRequestValid({params: {placementId: 'foo', pubId: 'bar'}}) === true);
+      assert(spec.isBidRequestValid({params: {placementId: 'foo', publisherId: 'bar'}}) === true);
     });
 
     it('fails when the bid does not include a placement ID', function() {
-      assert(spec.isBidRequestValid({params: {pubId: 'foo'}}) === false);
+      assert(spec.isBidRequestValid({params: {publisherId: 'foo'}}) === false);
     });
 
     it('fails when the bid does not include a publisher ID', function() {
@@ -72,7 +72,7 @@ describe('jwplayer adapter tests', function() {
       const serverRequests = spec.buildRequests(bidRequests, this.defaultBidderRequest);
 
       serverRequests.forEach(serverRequest => {
-        expect(serverRequest.url).to.have.string('https://ib.adnxs.com/openrtb2/prebid');
+        expect(serverRequest.url).to.have.string('http://jwplayer-useast.adnxs.com/openrtb2?member_id=12564');
         expect(serverRequest.method).to.equal('POST');
 
         const openrtbRequest = JSON.parse(serverRequest.data);
@@ -96,9 +96,9 @@ describe('jwplayer adapter tests', function() {
         expect(openrtbRequest.imp[0]).to.not.equal(null);
         expect(openrtbRequest.imp[0].video).to.not.equal(null);
         expect(openrtbRequest.imp[0].ext).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus.placement_id).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus.placement_id).to.equal(12345);
+        expect(openrtbRequest.imp[0].ext.jwplayer).to.not.equal(null);
+        expect(openrtbRequest.imp[0].ext.jwplayer.placement_id).to.not.equal(null);
+        expect(openrtbRequest.imp[0].ext.jwplayer.placement_id).to.equal(12345);
 
         expect(openrtbRequest.user).to.not.equal(null);
         expect(openrtbRequest.user.ext).to.not.equal(null);
