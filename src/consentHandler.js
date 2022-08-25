@@ -5,27 +5,21 @@ export class ConsentHandler {
   constructor() {
     this.enabled = false;
     this.ready = false;
-    this._promise = null;
+    this._defer = null;
     this.reset();
   }
 
-  #resolve(data) {
-    this.#ready = true;
-    this.#data = data;
-    this.#defer.resolve(data);
+  resolve(data) {
+    this.ready = true;
+    this.data = data;
+    this._defer.resolve(data);
   }
 
   /**
    * reset this handler (mainly for tests)
    */
   reset() {
-    this.promise = new Promise((resolve) => {
-      this.resolve = (data) => {
-        this.ready = true;
-        this.data = data;
-        resolve(data);
-      };
-    });
+    this._defer = defer();
     this.enabled = false;
     this.data = null;
     this.ready = false;
@@ -45,17 +39,17 @@ export class ConsentHandler {
    */
   get promise() {
     if (this.ready) {
-      return Promise.resolve(this.data);
+      return GreedyPromise.resolve(this.data);
     }
 
     if (!this.enabled) {
       this.resolve(null);
     }
-    return this._promise;
+    return this._defer.promise;
   }
 
   set promise(prom) {
-    this._promise = prom;
+    this._defer = prom;
   }
 
   setConsentData(data, time = timestamp()) {
