@@ -53,10 +53,6 @@ export const DEFAULT_PROCESSORS = {
       // populates imp.banner
       fn: fillBannerImp
     },
-    video: {
-      // populates imp.video
-      fn: fillVideoImp
-    },
     pbadslot: {
       // removes imp.ext.data.pbaslot if it's not a string
       // TODO: is this needed?
@@ -77,10 +73,6 @@ export const DEFAULT_PROCESSORS = {
     banner: {
       // sets banner response attributes if bidResponse.mediaType === BANNER
       fn: bannerResponseProcessor(),
-    },
-    video: {
-      // sets video response attributes if bidResponse.mediaType === VIDEO
-      fn: fillVideoResponse
     },
     props: {
       // sets base bidResponse properties common to all types of bids
@@ -120,4 +112,41 @@ if (FEATURES.NATIVE) {
     // populates bidResponse.native if bidResponse.mediaType === NATIVE
     fn: fillNativeResponse
   }
+}
+
+if (FEATURES.VIDEO) {
+  DEFAULT_PROCESSORS[IMP].video = {
+    // populates imp.video
+    fn: fillVideoImp
+  }
+  DEFAULT_PROCESSORS[BID_RESPONSE].video = {
+    // sets video response attributes if bidResponse.mediaType === VIDEO
+    fn: fillVideoResponse
+  }
+}
+
+function fpdFromTopLevelConfig(prop) {
+  return {
+    priority: 90, // after FPD from 'ortb2', before the rest
+    fn(ortbRequest) {
+      const data = config.getConfig(prop);
+      if (typeof data === 'object') {
+        ortbRequest[prop] = mergeDeep({}, ortbRequest[prop], data);
+      }
+    }
+  }
+}
+
+export function onlyOneClientSection(ortbRequest) {
+  ['dooh', 'app', 'site'].reduce((found, section) => {
+    if (ortbRequest[section] != null && Object.keys(ortbRequest[section]).length > 0) {
+      if (found != null) {
+        logWarn(`ORTB request specifies both '${found}' and '${section}'; dropping the latter.`)
+        delete ortbRequest[section];
+      } else {
+        found = section;
+      }
+    }
+    return found;
+  }, null);
 }
