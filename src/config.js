@@ -160,6 +160,17 @@ export function newConfig() {
       maxNestedIframes: DEFAULT_MAX_NESTED_IFRAMES,
     };
 
+    if (!Object.fromEntries) {
+      Object.fromEntries = function (entries){
+        if (!entries || !entries[Symbol.iterator]) { throw new Error('Object.fromEntries() requires a single iterable argument'); }
+        let obj = {};
+        for (let [key, value] of entries) {
+          obj[key] = value;
+        }
+        return obj;
+      };
+    }
+
     Object.defineProperties(newConfig,
       Object.fromEntries(Object.entries(props)
         .map(([k, def]) => [k, Object.assign({
