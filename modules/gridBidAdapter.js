@@ -631,6 +631,10 @@ function createVideoRequest(videoParams, mediaType, bidSizes) {
     videoData.protocols = protocols;
   }
 
+  if (videoData.context) {
+    delete videoData.context;
+  }
+
   return videoData;
 }
 
