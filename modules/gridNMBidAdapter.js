@@ -408,6 +408,10 @@ function createVideoForImp({ mind, maxd, size, ...paramsVideo }, bidSizes) {
     paramsVideo.maxduration = maxDur;
   }
 
+  if (paramsVideo.context) {
+    delete paramsVideo.context;
+  }
+
   return paramsVideo;
 }
 
