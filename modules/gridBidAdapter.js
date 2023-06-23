@@ -37,7 +37,7 @@ const RENDERER_URL = 'https://acdn.adnxs.com/video/outstream/ANOutstreamVideo.js
 export const storage = getStorageManager({bidderCode: BIDDER_CODE});
 
 const LOG_ERROR_MESS = {
-  noAuid: 'Bid from response has no auid parameter - ',
+  noAdid: 'Bid from response has no adid parameter - ',
   noAdm: 'Bid from response has no adm parameter - ',
   noBid: 'Array of bid objects is empty',
   noPlacementCode: 'Can\'t find in requested bids the bid with auid - ',
@@ -540,7 +540,7 @@ function _getBidFromResponse(respItem) {
 function _addBidResponse(serverBid, bidRequest, bidResponses, RendererConst, bidderCode) {
   if (!serverBid) return;
   let errorMessage;
-  if (!serverBid.auid) errorMessage = LOG_ERROR_MESS.noAuid + JSON.stringify(serverBid);
+  if (!serverBid.adid) errorMessage = LOG_ERROR_MESS.noAdid + JSON.stringify(serverBid);
   if (!errorMessage && !serverBid.adm && !serverBid.nurl) errorMessage = LOG_ERROR_MESS.noAdm + JSON.stringify(serverBid);
   else {
     const bidObject = bidRequest.bidsMap ? bidRequest.bidsMap[serverBid.impid] : bidRequest.bidObject;
@@ -551,7 +551,7 @@ function _addBidResponse(serverBid, bidRequest, bidResponses, RendererConst, bid
         cpm: serverBid.price,
         width: serverBid.w,
         height: serverBid.h,
-        creativeId: serverBid.auid, // bid.bidId
+        creativeId: serverBid.adid,
         currency: 'USD',
         netRevenue: true,
         ttl: TIME_TO_LIVE,
