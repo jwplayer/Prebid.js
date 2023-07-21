@@ -7,7 +7,7 @@ import {
   deepSetValue } from '../src/utils.js';
 import { config } from '../src/config.js';
 const BIDDER_CODE = 'jwplayer';
-const URL = 'https://ib.adnxs.com/openrtb2/prebid';
+const URL = 'https://vpb-server.jwplayer.com/openrtb2/auction';
 
 const GVLID = 1046;
 const SUPPORTED_AD_TYPES = [VIDEO];
@@ -21,6 +21,7 @@ const VIDEO_ORTB_PARAMS = [
   'protocols',
   'startdelay',
   'placement',
+  'plcmt',
   'skip',
   'skipafter',
   'minbitrate',
@@ -36,27 +37,15 @@ export const spec = {
   gvlid: GVLID,
   supportedMediaTypes: SUPPORTED_AD_TYPES,
 
-  /**
-   * Determines whether or not the given bid request is valid.
-   *
-   * @param {object} bid The bid to validate.
-   * @return boolean True if this is a valid bid, and false otherwise.
-   */
   isBidRequestValid: function(bid) {
-    if (!bid || !bid.params) {
+    const params = bid && bid.params;
+    if (!params) {
       return false;
     }
 
-    return !!bid.params.placementId && !!bid.params.pubId;
+    return !!params.placementId && !!params.publisherId && !!params.siteId;
   },
 
-  /**
-   * Make a server request from the list of BidRequests.
-   *
-   * @param {BidRequest[]} bidRequests A non-empty list of bid requests, or ad units, which should be sent to the server.
-   * @param bidderRequest
-   * @return ServerRequest Info describing the request to the server.
-   */
   buildRequests: function(bidRequests, bidderRequest) {
     if (!bidRequests) {
       return;
@@ -125,11 +114,11 @@ function buildRequest(bidRequest, bidderRequest) {
   const openrtbRequest = {
     id: bidRequest.bidId,
     imp: buildRequestImpression(bidRequest, bidderRequest),
-    site: buildRequestSite(bidderRequest),
+    site: buildRequestSite(bidRequest, bidderRequest),
     device: buildRequestDevice()
   };
 
-  // Attaching GDPR Consent Params
+  // GDPR Consent Params
   if (bidderRequest.gdprConsent) {
     deepSetValue(openrtbRequest, 'user.ext.consent', bidderRequest.gdprConsent.consentString);
     deepSetValue(openrtbRequest, 'regs.ext.gdpr', (bidderRequest.gdprConsent.gdprApplies ? 1 : 0));
@@ -139,6 +128,12 @@ function buildRequest(bidRequest, bidderRequest) {
   if (bidderRequest.uspConsent) {
     deepSetValue(openrtbRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
   }
+
+  if (bidRequest.schain) {
+    deepSetValue(openrtbRequest, 'source.schain', bidRequest.schain);
+  }
+
+  openrtbRequest.tmax = bidderRequest.timeout || 200;
 
   return JSON.stringify(openrtbRequest);
 }
@@ -177,14 +172,18 @@ function buildImpressionVideo(bidRequest) {
 
 function buildImpressionExtension(bidRequest) {
   return {
-    appnexus: {
-      placement_id: bidRequest.params.placementId
+    prebid: {
+      bidder: {
+        jwplayer: {
+          placementId: bidRequest.params.placementId
+        }
+      }
     }
   };
 }
 
 function buildBidFloorData(bidRequest) {
-  const {params} = bidRequest;
+  const { params } = bidRequest;
   const currency = params.currency || 'USD';
 
   let floorData;
@@ -195,14 +194,14 @@ function buildBidFloorData(bidRequest) {
       size: '*'
     };
     floorData = bidRequest.getFloor(bidFloorRequest);
-  } else if (params.bidfloor) {
-    floorData = {floor: params.bidfloor, currency: currency};
+  } else if (params.bidFloor) {
+    floorData = { floor: params.bidFloor, currency: currency };
   }
 
   return floorData;
 }
 
-function buildRequestSite(bidderRequest) {
+function buildRequestSite(bidRequest, bidderRequest) {
   const site = config.getConfig('ortb2.site') || {};
 
   site.domain = site.domain || config.publisherDomain || window.location.hostname;
@@ -212,6 +211,9 @@ function buildRequestSite(bidderRequest) {
   if (!site.ref && referer) {
     site.ref = referer;
   }
+
+  deepSetValue(site, 'publisher.ext.jwplayer.publisherId', bidRequest.params.publisherId);
+  deepSetValue(site, 'publisher.ext.jwplayer.siteId', bidRequest.params.siteId);
 
   return site;
 }

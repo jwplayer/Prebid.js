@@ -2,59 +2,101 @@ import { expect, assert } from 'chai';
 import { spec } from 'modules/jwplayerBidAdapter.js';
 import { config } from 'src/config.js';
 
-describe('jwplayer adapter tests', function() {
+describe('jwplayer bid adapter tests', function() {
   beforeEach(function() {
     this.defaultBidderRequest = {
       'gdprConsent': {
-        'consentString': '',
+        'consentString': 'testConsentString',
         'gdprApplies': true
       },
-      'uspConsent': true,
+      'uspConsent': 'testCCPA',
       'refererInfo': {
         'referer': 'https://example.com'
-      }
+      },
+      timeout: 1000,
     }
   });
 
   describe('isBidRequestValid', function() {
-    it('passes when the bid includes a placement ID and a publisher ID', function() {
-      assert(spec.isBidRequestValid({params: {placementId: 'foo', pubId: 'bar'}}) === true);
+    it('passes when the bid includes a placement ID, a publisher ID and a site ID', function() {
+      assert(spec.isBidRequestValid({params: {placementId: 'foo', publisherId: 'bar', siteId: 'siteId '}}) === true);
     });
 
-    it('fails when the bid does not include a placement ID', function() {
-      assert(spec.isBidRequestValid({params: {pubId: 'foo'}}) === false);
+    it('fails when the bid request only includes a publisher ID', function() {
+      assert(spec.isBidRequestValid({params: {publisherId: 'foo'}}) === false);
     });
 
-    it('fails when the bid does not include a publisher ID', function() {
+    it('fails when the bid request only includes a placement ID', function() {
       assert(spec.isBidRequestValid({params: {placementId: 'foo'}}) === false);
     });
 
-    it('fails when bid is falsey', function() {
+    it('fails when the bid request only includes a site ID', function() {
+      assert(spec.isBidRequestValid({params: {siteId: 'foo'}}) === false);
+    });
+
+    it('fails when bid is undefined', function() {
       assert(spec.isBidRequestValid() === false);
     });
 
-    it('fails when the bid has no params at all', function() {
+    it('fails when bid is null', function() {
+      assert(spec.isBidRequestValid(null) === false);
+    });
+
+    it('fails when the bid has no params', function() {
       assert(spec.isBidRequestValid({}) === false);
     });
   });
 
   describe('buildRequests for video', function() {
-    it('buildRequests works', function() {
+    it('should include proper ortb params in requests', function() {
       const bidRequests = [
         {
-          'bidder': 'jwplayer',
-          'params': {
-            'placementId': 12345
+          bidder: 'jwplayer',
+          params: {
+            placementId: 'testPlacementId',
+            publisherId: 'testPublisherId',
+            siteId: 'testSiteId',
+            bidFloor: 10,
+            currency: 'EUR',
           },
-          'mediaTypes': {
-            'video': {
-              'playerSize': [640, 480],
-              'content': {}
+          mediaTypes: {
+            video: {
+              playerSize: [640, 480],
+              context: 'instream',
+              mimes: [
+                'video/mp4',
+                'application/javascript'
+              ],
+              protocols: [2, 3, 5, 6],
+              maxduration: 60,
+              minduration: 3,
+              startdelay: 0,
+              linearity: 1,
+              placement: 1,
+              plcmt: 1,
+              skip: 1,
+              skipafter: 4,
+              minbitrate: 500,
+              maxbitrate: 1000,
+              api: [2],
+              delivery: [2],
+              playbackmethod: [1],
             }
           },
-          'bidRequestsCount': 1,
-          'adUnitCode': 'testAdUnitCode',
-          'bidId': 'testBidId'
+          schain: {
+            ver: '1.0',
+            complete: 1,
+            nodes: [
+              {
+                asi: 'publisher.com',
+                sid: '00001',
+                hp: 1
+              }
+            ]
+          },
+          bidRequestsCount: 1,
+          adUnitCode: 'testAdUnitCode',
+          bidId: 'testBidId'
         }
       ]
 
@@ -72,41 +114,61 @@ describe('jwplayer adapter tests', function() {
       const serverRequests = spec.buildRequests(bidRequests, this.defaultBidderRequest);
 
       serverRequests.forEach(serverRequest => {
-        expect(serverRequest.url).to.have.string('https://ib.adnxs.com/openrtb2/prebid');
+        expect(serverRequest.url).to.equal('https://vpb-server.jwplayer.com/openrtb2/auction');
         expect(serverRequest.method).to.equal('POST');
 
         const openrtbRequest = JSON.parse(serverRequest.data);
 
-        expect(openrtbRequest.id).to.not.equal(null);
-        expect(openrtbRequest.id).to.have.string('testBidId');
+        expect(openrtbRequest.id).to.equal('testBidId');
 
-        expect(openrtbRequest.site).to.not.equal(null);
-        expect(openrtbRequest.site).to.be.an('object');
-        expect(openrtbRequest.site.domain).to.be.a('string');
-        expect(openrtbRequest.site.domain).to.have.string('page.example.com');
-        expect(openrtbRequest.site.page).to.be.a('string');
-        expect(openrtbRequest.site.page).to.have.string('https://examplepage.com');
-        expect(openrtbRequest.site.ref).to.be.a('string');
-        expect(openrtbRequest.site.ref).to.have.string('https://example.com');
+        expect(openrtbRequest.site.domain).to.equal('page.example.com');
+        expect(openrtbRequest.site.page).to.equal('https://examplepage.com');
+        expect(openrtbRequest.site.ref).to.equal('https://example.com');
+        expect(openrtbRequest.site.publisher.ext.jwplayer.publisherId).to.equal('testPublisherId');
+        expect(openrtbRequest.site.publisher.ext.jwplayer.siteId).to.equal('testSiteId');
 
-        expect(openrtbRequest.device).to.not.equal(null);
         expect(openrtbRequest.device.ua).to.equal(navigator.userAgent);
 
-        expect(openrtbRequest.imp).to.not.equal(null);
-        expect(openrtbRequest.imp[0]).to.not.equal(null);
-        expect(openrtbRequest.imp[0].video).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus.placement_id).to.not.equal(null);
-        expect(openrtbRequest.imp[0].ext.appnexus.placement_id).to.equal(12345);
+        expect(openrtbRequest.imp[0].id).to.equal('testAdUnitCode');
+        expect(openrtbRequest.imp[0].video.mimes).to.deep.equal(['video/mp4', 'application/javascript']);
+        expect(openrtbRequest.imp[0].video.protocols).to.deep.equal([2, 3, 5, 6]);
+        expect(openrtbRequest.imp[0].video.api).to.deep.equal([2]);
+        expect(openrtbRequest.imp[0].video.startdelay).to.equal(0);
+        expect(openrtbRequest.imp[0].video.placement).to.equal(1);
+        expect(openrtbRequest.imp[0].video.plcmt).to.equal(1);
+        expect(openrtbRequest.imp[0].video.minduration).to.equal(3);
+        expect(openrtbRequest.imp[0].video.maxduration).to.equal(60);
+        expect(openrtbRequest.imp[0].video.skip).to.equal(1);
+        expect(openrtbRequest.imp[0].video.skipafter).to.equal(4);
+        expect(openrtbRequest.imp[0].video.minbitrate).to.equal(500);
+        expect(openrtbRequest.imp[0].video.maxbitrate).to.equal(1000);
+        expect(openrtbRequest.imp[0].video.delivery).to.deep.equal([2]);
+        expect(openrtbRequest.imp[0].video.playbackmethod).to.deep.equal([1]);
+        expect(openrtbRequest.imp[0].video.linearity).to.equal(1);
 
-        expect(openrtbRequest.user).to.not.equal(null);
-        expect(openrtbRequest.user.ext).to.not.equal(null);
+        expect(openrtbRequest.imp[0].bidfloor).to.equal(10);
+        expect(openrtbRequest.imp[0].bidfloorcur).to.equal('EUR');
 
-        expect(openrtbRequest.regs).to.not.equal(null);
-        expect(openrtbRequest.regs.ext).to.not.equal(null);
+        expect(openrtbRequest.imp[0].ext.prebid.bidder.jwplayer.placementId).to.equal('testPlacementId');
+
+        expect(openrtbRequest.user.ext.consent).to.equal('testConsentString');
+
         expect(openrtbRequest.regs.ext.gdpr).to.equal(1);
-        expect(openrtbRequest.regs.ext.us_privacy).to.equal(true);
+        expect(openrtbRequest.regs.ext.us_privacy).to.equal('testCCPA');
+
+        expect(openrtbRequest.source.schain).to.deep.equal({
+          ver: '1.0',
+          complete: 1,
+          nodes: [
+            {
+              asi: 'publisher.com',
+              sid: '00001',
+              hp: 1
+            }
+          ]
+        });
+
+        expect(openrtbRequest.tmax).to.equal(1000);
       });
 
       sandbox.restore();
