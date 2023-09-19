@@ -1219,8 +1219,8 @@ export function formatQS(query) {
   return Object
     .keys(query)
     .map(k => Array.isArray(query[k])
-      ? query[k].map(v => `${k}[]=${v}`).join('&')
-      : `${k}=${query[k]}`)
+      ? query[k].map(v => `${k}[]=${encodeURIComponent(v)}`).join('&')
+      : `${k}=${encodeURIComponent(query[k])}`)
     .join('&');
 }
 
