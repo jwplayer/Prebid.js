@@ -23,6 +23,13 @@
 
         // Replace this object to test a new Adapter!
         bids: [{
+          bidder: 'jwplayer',
+          params: {
+            publisherId: 'test-publisher-id',
+            siteId: 'test-site-id',
+            placementId: 'test-placement-id'
+          }
+        }, {
           bidder: 'ix',
           params: {
             siteId: '300',
@@ -37,7 +44,7 @@
               divId: 'player',
               vendorCode: 1, // vendorCode for jwplayer
               playerConfig: {
-                licenseKey: 'IAjLREYRLylTWsfLN3FoN/O3iQLbs+AfgZLlkAoyH8gSf7TnNtmOLcR8CUY=',
+                licenseKey: 'zwqnWJlovTKhXv2JIcKBj0Si//K7cVPmBDEyaILcAMw+nVKaizsJRA==',
                 params: {
                   vendorConfig: {
                     file: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',

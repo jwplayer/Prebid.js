@@ -3,7 +3,8 @@ import magniteAdapter, {
   getHostNameFromReferer,
   storage,
   rubiConf,
-  detectBrowserFromUa
+  detectBrowserFromUa,
+  callPrebidCacheHook
 } from '../../../modules/magniteAnalyticsAdapter.js';
 import CONSTANTS from 'src/constants.json';
 import { config } from 'src/config.js';
@@ -550,7 +551,7 @@ describe('magnite analytics adapter', function () {
       expect(server.requests.length).to.equal(1);
       let request = server.requests[0];
 
-      expect(request.url).to.equal('//localhost:9999/event');
+      expect(request.url).to.match(/\/\/localhost:9999\/event/);
 
       let message = JSON.parse(request.requestBody);
 
@@ -724,7 +725,7 @@ describe('magnite analytics adapter', function () {
         expect(server.requests.length).to.equal(1);
         let request = server.requests[0];
 
-        expect(request.url).to.equal('//localhost:9999/event');
+        expect(request.url).to.match(/\/\/localhost:9999\/event/);
 
         let message = JSON.parse(request.requestBody);
 
@@ -1137,6 +1138,39 @@ describe('magnite analytics adapter', function () {
       });
     });
 
+    it('should not use pbsBidId if the bid was client side cached', function () {
+      // bid response
+      let seatBidResponse = utils.deepClone(MOCK.BID_RESPONSE);
+      seatBidResponse.pbsBidId = 'do-not-use-me';
+
+      // Run auction
+      events.emit(AUCTION_INIT, MOCK.AUCTION_INIT);
+      events.emit(BID_REQUESTED, MOCK.BID_REQUESTED);
+
+      // mock client side cache call
+      callPrebidCacheHook(() => {}, {}, seatBidResponse);
+
+      events.emit(BID_RESPONSE, seatBidResponse);
+      events.emit(BIDDER_DONE, MOCK.BIDDER_DONE);
+      events.emit(AUCTION_END, MOCK.AUCTION_END);
+
+      // emmit gpt events and bidWon
+      mockGpt.emitEvent(gptSlotRenderEnded0.eventName, gptSlotRenderEnded0.params);
+
+      events.emit(BID_WON, MOCK.BID_WON);
+
+      // tick the event delay time plus processing delay
+      clock.tick(rubiConf.analyticsEventDelay + rubiConf.analyticsProcessDelay);
+
+      expect(server.requests.length).to.equal(1);
+      let request = server.requests[0];
+      let message = JSON.parse(request.requestBody);
+
+      // Expect the ids sent to server to use the original bidId not the pbsBidId thing
+      expect(message.auctions[0].adUnits[0].bids[0].bidId).to.equal(MOCK.BID_RESPONSE.requestId);
+      expect(message.bidsWon[0].bidId).to.equal(MOCK.BID_RESPONSE.requestId);
+    });
+
     [0, '0'].forEach(pbsParam => {
       it(`should generate new bidId if incoming pbsBidId is ${pbsParam}`, function () {
         // bid response
@@ -1492,6 +1526,40 @@ describe('magnite analytics adapter', function () {
       expect(message).to.deep.equal(expectedMessage);
     });
 
+    describe('when eventDispatcher is present', () => {
+      beforeEach(() => {
+        window.pbjs = window.pbjs || {};
+        pbjs.rp = pbjs.rp || {};
+        pbjs.rp.eventDispatcher = pbjs.rp.eventDispatcher || document.createElement('fakeElem');
+      });
+
+      afterEach(() => {
+        delete pbjs.rp.eventDispatcher;
+        delete pbjs.rp;
+      });
+
+      it('should dispatch beforeSendingMagniteAnalytics if possible', () => {
+        pbjs.rp.eventDispatcher.addEventListener('beforeSendingMagniteAnalytics', (data) => {
+          data.detail.test = 'testData';
+        });
+
+        performStandardAuction();
+
+        expect(server.requests.length).to.equal(1);
+        let request = server.requests[0];
+
+        expect(request.url).to.equal('http://localhost:9999/event');
+
+        let message = JSON.parse(request.requestBody);
+
+        const AnalyticsMessageWithCustomData = {
+          ...ANALYTICS_MESSAGE,
+          test: 'testData'
+        }
+        expect(message).to.deep.equal(AnalyticsMessageWithCustomData);
+      });
+    })
+
     describe('when handling bid caching', () => {
       let auctionInits, bidRequests, bidResponses, bidsWon;
       beforeEach(function () {
@@ -1671,6 +1739,79 @@ describe('magnite analytics adapter', function () {
           bidId: 'bidId-3',
         };
         expect(message1.bidsWon).to.deep.equal([expectedMessage1]);
+      });
+    });
+    describe('cookieless', () => {
+      beforeEach(() => {
+        magniteAdapter.enableAnalytics({
+          options: {
+            cookieles: undefined
+          }
+        });
+      })
+      afterEach(() => {
+        magniteAdapter.disableAnalytics();
+      })
+      it('should add sufix _cookieless to the wrapper.rule if ortb2.device.ext.cdep start with "treatment" or  "control_2"', () => {
+        // Set the confs
+        config.setConfig({
+          rubicon: {
+            wrapperName: '1001_general',
+            wrapperFamily: 'general',
+            rule_name: 'desktop-magnite.com',
+          }
+        });
+        const auctionId = MOCK.AUCTION_INIT.auctionId;
+
+        let auctionInit = utils.deepClone(MOCK.AUCTION_INIT);
+        auctionInit.bidderRequests[0].ortb2.device.ext = { cdep: 'treatment' };
+        // Run auction
+        events.emit(AUCTION_INIT, auctionInit);
+        events.emit(BID_REQUESTED, MOCK.BID_REQUESTED);
+        events.emit(BID_RESPONSE, MOCK.BID_RESPONSE);
+        events.emit(BIDDER_DONE, MOCK.BIDDER_DONE);
+        events.emit(AUCTION_END, MOCK.AUCTION_END);
+        [gptSlotRenderEnded0].forEach(gptEvent => mockGpt.emitEvent(gptEvent.eventName, gptEvent.params));
+        events.emit(BID_WON, { ...MOCK.BID_WON, auctionId });
+        clock.tick(rubiConf.analyticsEventDelay);
+        expect(server.requests.length).to.equal(1);
+        let request = server.requests[0];
+        let message = JSON.parse(request.requestBody);
+        expect(message.wrapper).to.deep.equal({
+          name: '1001_general',
+          family: 'general',
+          rule: 'desktop-magnite.com_cookieless',
+        });
+      })
+      it('should add cookieless to the wrapper.rule if ortb2.device.ext.cdep start with "treatment" or  "control_2"', () => {
+        // Set the confs
+        config.setConfig({
+          rubicon: {
+            wrapperName: '1001_general',
+            wrapperFamily: 'general',
+          }
+        });
+        const auctionId = MOCK.AUCTION_INIT.auctionId;
+
+        let auctionInit = utils.deepClone(MOCK.AUCTION_INIT);
+        auctionInit.bidderRequests[0].ortb2.device.ext = { cdep: 'control_2' };
+        // Run auction
+        events.emit(AUCTION_INIT, auctionInit);
+        events.emit(BID_REQUESTED, MOCK.BID_REQUESTED);
+        events.emit(BID_RESPONSE, MOCK.BID_RESPONSE);
+        events.emit(BIDDER_DONE, MOCK.BIDDER_DONE);
+        events.emit(AUCTION_END, MOCK.AUCTION_END);
+        [gptSlotRenderEnded0].forEach(gptEvent => mockGpt.emitEvent(gptEvent.eventName, gptEvent.params));
+        events.emit(BID_WON, { ...MOCK.BID_WON, auctionId });
+        clock.tick(rubiConf.analyticsEventDelay);
+        expect(server.requests.length).to.equal(1);
+        let request = server.requests[0];
+        let message = JSON.parse(request.requestBody);
+        expect(message.wrapper).to.deep.equal({
+          family: 'general',
+          name: '1001_general',
+          rule: 'cookieless',
+        });
       });
     });
   });

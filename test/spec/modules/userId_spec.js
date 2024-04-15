@@ -2,7 +2,7 @@ import {
   attachIdSystem,
   auctionDelay,
   coreStorage, dep,
-  findRootDomain,
+  findRootDomain, getConsentHash,
   init,
   PBJS_USER_ID_OPTOUT_NAME,
   requestBidsHook,
@@ -12,6 +12,7 @@ import {
   setSubmoduleRegistry,
   syncDelay,
 } from 'modules/userId/index.js';
+import {UID1_EIDS} from 'libraries/uid1Eids/uid1Eids.js';
 import {createEidsArray, EID_CONFIG} from 'modules/userId/eids.js';
 import {config} from 'src/config.js';
 import * as utils from 'src/utils.js';
@@ -21,7 +22,6 @@ import CONSTANTS from 'src/constants.json';
 import {getGlobal} from 'src/prebidGlobal.js';
 import {resetConsentData, } from 'modules/consentManagement.js';
 import {server} from 'test/mocks/xhr.js';
-import {find} from 'src/polyfill.js';
 import {unifiedIdSubmodule} from 'modules/unifiedIdSystem.js';
 import {britepoolIdSubmodule} from 'modules/britepoolIdSystem.js';
 import {id5IdSubmodule} from 'modules/id5IdSystem.js';
@@ -56,7 +56,7 @@ import {hook} from '../../../src/hook.js';
 import {mockGdprConsent} from '../../helpers/consentData.js';
 import {getPPID} from '../../../src/adserver.js';
 import {uninstall as uninstallGdprEnforcement} from 'modules/gdprEnforcement.js';
-import {GDPR_GVLIDS} from '../../../src/consentHandler.js';
+import {allConsent, GDPR_GVLIDS, gdprDataHandler} from '../../../src/consentHandler.js';
 import {MODULE_TYPE_UID} from '../../../src/activities/modules.js';
 import {ACTIVITY_ENRICH_EIDS} from '../../../src/activities/activities.js';
 import {ACTIVITY_PARAM_COMPONENT_NAME, ACTIVITY_PARAM_COMPONENT_TYPE} from '../../../src/activities/params.js';
@@ -97,6 +97,25 @@ describe('User ID', function () {
       },
       aliasName,
       eids
+    }
+  }
+
+  function createMockEid(name, source) {
+    return {
+      [name]: {
+        source: source || `${name}Source`,
+        atype: 3,
+        getValue: function(data) {
+          if (data.id) {
+            return data.id;
+          } else {
+            return data;
+          }
+        },
+        getUidExt: function(data) {
+          return data.ext
+        }
+      }
     }
   }
 
@@ -380,10 +399,95 @@ describe('User ID', function () {
             expect(bid).to.not.have.deep.nested.property('userIdAsEids');
           });
         });
-        // setCookie is called once in order to store consentData
-        expect(coreStorage.setCookie.callCount).to.equal(1);
       });
     });
+
+    describe('createEidsArray', () => {
+      beforeEach(() => {
+        init(config);
+        setSubmoduleRegistry([
+          createMockIdSubmodule('mockId1', null, null,
+            {'mockId1': {source: 'mock1source', atype: 1}}),
+          createMockIdSubmodule('mockId2v1', null, null,
+            {'mockId2v1': {source: 'mock2source', atype: 2, getEidExt: () => ({v: 1})}}),
+          createMockIdSubmodule('mockId2v2', null, null,
+            {'mockId2v2': {source: 'mock2source', atype: 2, getEidExt: () => ({v: 2})}}),
+        ]);
+      });
+
+      it('should group UIDs by source and ext', () => {
+        const eids = createEidsArray({
+          mockId1: ['mock-1-1', 'mock-1-2'],
+          mockId2v1: ['mock-2-1', 'mock-2-2'],
+          mockId2v2: ['mock-2-1', 'mock-2-2']
+        });
+        expect(eids).to.eql([
+          {
+            source: 'mock1source',
+            uids: [
+              {
+                id: 'mock-1-1',
+                atype: 1,
+              },
+              {
+                id: 'mock-1-2',
+                atype: 1,
+              }
+            ]
+          },
+          {
+            source: 'mock2source',
+            ext: {
+              v: 1
+            },
+            uids: [
+              {
+                id: 'mock-2-1',
+                atype: 2,
+              },
+              {
+                id: 'mock-2-2',
+                atype: 2,
+              }
+            ]
+          },
+          {
+            source: 'mock2source',
+            ext: {
+              v: 2
+            },
+            uids: [
+              {
+                id: 'mock-2-1',
+                atype: 2,
+              },
+              {
+                id: 'mock-2-2',
+                atype: 2,
+              }
+            ]
+          }
+        ])
+      });
+
+      it('when merging with pubCommonId, should not alter its eids', () => {
+        const uid = {
+          pubProvidedId: [
+            {
+              source: 'mock1Source',
+              uids: [
+                {id: 'uid2'}
+              ]
+            }
+          ],
+          mockId1: 'uid1',
+        };
+        const eids = createEidsArray(uid);
+        expect(eids).to.have.length(1);
+        expect(eids[0].uids.map(u => u.id)).to.have.members(['uid1', 'uid2']);
+        expect(uid.pubProvidedId[0].uids).to.eql([{id: 'uid2'}]);
+      });
+    })
 
     it('pbjs.getUserIds', function (done) {
       init(config);
@@ -560,10 +664,10 @@ describe('User ID', function () {
     it('pbjs.getUserIdsAsEids should prioritize user ids according to config available to core', () => {
       init(config);
       setSubmoduleRegistry([
-        createMockIdSubmodule('mockId1Module', {id: {uid2: {id: 'uid2_value'}}}),
-        createMockIdSubmodule('mockId2Module', {id: {pubcid: 'pubcid_value', lipb: {lipbid: 'lipbid_value_from_mockId2Module'}}}),
-        createMockIdSubmodule('mockId3Module', {id: {uid2: {id: 'uid2_value_from_mockId3Module'}, pubcid: 'pubcid_value_from_mockId3Module', lipb: {lipbid: 'lipbid_value'}, merkleId: {id: 'merkleId_value_from_mockId3Module'}}}),
-        createMockIdSubmodule('mockId4Module', {id: {merkleId: {id: 'merkleId_value'}}})
+        createMockIdSubmodule('mockId1Module', {id: {uid2: {id: 'uid2_value'}}}, null, createMockEid('uid2')),
+        createMockIdSubmodule('mockId2Module', {id: {pubcid: 'pubcid_value', lipb: {lipbid: 'lipbid_value_from_mockId2Module'}}}, null, createMockEid('pubcid')),
+        createMockIdSubmodule('mockId3Module', {id: {uid2: {id: 'uid2_value_from_mockId3Module'}, pubcid: 'pubcid_value_from_mockId3Module', lipb: {lipbid: 'lipbid_value'}, merkleId: {id: 'merkleId_value_from_mockId3Module'}}}, null, {...createMockEid('uid2'), ...createMockEid('merkleId'), ...createMockEid('lipb')}),
+        createMockIdSubmodule('mockId4Module', {id: {merkleId: {id: 'merkleId_value'}}}, null, createMockEid('merkleId'))
       ]);
       config.setConfig({
         userSync: {
@@ -593,6 +697,38 @@ describe('User ID', function () {
         const expected = createEidsArray(ids);
         expect(eids).to.deep.equal(expected);
       });
+    });
+
+    it('pbjs.getUserIdsAsEids should prioritize the uid1 according to config available to core', () => {
+      init(config);
+      setSubmoduleRegistry([
+        createMockIdSubmodule('mockId1Module', {id: {tdid: {id: 'uid1_value'}}}, null, UID1_EIDS),
+        createMockIdSubmodule('mockId2Module', {id: {tdid: {id: 'uid1Id_value_from_mockId2Module'}}}, null, UID1_EIDS),
+        createMockIdSubmodule('mockId3Module', {id: {tdid: {id: 'uid1Id_value_from_mockId3Module'}}}, null, UID1_EIDS)
+      ]);
+      config.setConfig({
+        userSync: {
+          idPriority: {
+            tdid: ['mockId2Module', 'mockId3Module', 'mockId1Module']
+          },
+          auctionDelay: 10, // with auctionDelay > 0, no auction is needed to complete init
+          userIds: [
+            { name: 'mockId1Module' },
+            { name: 'mockId2Module' },
+            { name: 'mockId3Module' }
+          ]
+        }
+      });
+
+      const ids = {
+        'tdid': { id: 'uid1Id_value_from_mockId2Module' },
+      };
+
+      return getGlobal().getUserIdsAsync().then(() => {
+        const eids = getGlobal().getUserIdsAsEids();
+        const expected = createEidsArray(ids);
+        expect(eids).to.deep.equal(expected);
+      })
     });
 
     describe('EID updateConfig', () => {
@@ -929,6 +1065,7 @@ describe('User ID', function () {
 
       beforeEach(() => {
         mockIdCallback = sinon.stub();
+        coreStorage.setCookie('MOCKID', '', EXPIRED_COOKIE_DATE);
         let mockIdSystem = {
           name: 'mockId',
           decode: function(value) {
@@ -1155,7 +1292,7 @@ describe('User ID', function () {
 
     it('pbjs.refreshUserIds refreshes single', function() {
       coreStorage.setCookie('MOCKID', '', EXPIRED_COOKIE_DATE);
-      coreStorage.setCookie('REFRESH', '', EXPIRED_COOKIE_DATE);
+      coreStorage.setCookie('refreshedid', '', EXPIRED_COOKIE_DATE);
 
       let sandbox = sinon.createSandbox();
       let mockIdCallback = sandbox.stub().returns({id: {'MOCKID': '1111'}});
@@ -3005,7 +3142,7 @@ describe('User ID', function () {
           expect(server.requests).to.be.empty;
           return endAuction();
         }).then(() => {
-          expect(server.requests[0].url).to.equal('/any/unifiedid/url');
+          expect(server.requests[0].url).to.match(/\/any\/unifiedid\/url/);
         });
       });
 
@@ -3119,17 +3256,12 @@ describe('User ID', function () {
           }
         };
 
-        consentData = {
-          gdprApplies: true,
-          consentString: 'mockString',
-          apiVersion: 1,
-          hasValidated: true // mock presence of GPDR enforcement module
-        }
         // clear cookies
         expStr = (new Date(Date.now() + 25000).toUTCString());
         coreStorage.setCookie(mockIdCookieName, '', EXPIRED_COOKIE_DATE);
         coreStorage.setCookie(`${mockIdCookieName}_last`, '', EXPIRED_COOKIE_DATE);
-        coreStorage.setCookie(CONSENT_LOCAL_STORAGE_NAME, '', EXPIRED_COOKIE_DATE);
+        coreStorage.setCookie(`${mockIdCookieName}_cst`, '', EXPIRED_COOKIE_DATE);
+        allConsent.reset();
 
         // init
         adUnits = [getAdUnitMock()];
@@ -3143,10 +3275,20 @@ describe('User ID', function () {
         config.resetConfig();
       });
 
-      it('calls getId if no stored consent data and refresh is not needed', function () {
-        coreStorage.setCookie(mockIdCookieName, JSON.stringify({id: '1234'}), expStr);
-        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - 1 * 1000).toUTCString()), expStr);
+      function setStorage({
+        val = JSON.stringify({id: '1234'}),
+        lastDelta = 60 * 1000,
+        cst = null
+      } = {}) {
+        coreStorage.setCookie(mockIdCookieName, val, expStr);
+        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - lastDelta).toUTCString()), expStr);
+        if (cst != null) {
+          coreStorage.setCookie(`${mockIdCookieName}_cst`, cst, expStr);
+        }
+      }
 
+      it('calls getId if no stored consent data and refresh is not needed', function () {
+        setStorage({lastDelta: 1000});
         config.setConfig(userIdConfig);
 
         let innerAdUnits;
@@ -3160,9 +3302,7 @@ describe('User ID', function () {
       });
 
       it('calls getId if no stored consent data but refresh is needed', function () {
-        coreStorage.setCookie(mockIdCookieName, JSON.stringify({id: '1234'}), expStr);
-        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - 60 * 1000).toUTCString()), expStr);
-
+        setStorage();
         config.setConfig(userIdConfig);
 
         let innerAdUnits;
@@ -3176,11 +3316,7 @@ describe('User ID', function () {
       });
 
       it('calls getId if empty stored consent and refresh not needed', function () {
-        coreStorage.setCookie(mockIdCookieName, JSON.stringify({id: '1234'}), expStr);
-        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - 1 * 1000).toUTCString()), expStr);
-
-        setStoredConsentData();
-
+        setStorage({cst: ''});
         config.setConfig(userIdConfig);
 
         let innerAdUnits;
@@ -3194,10 +3330,10 @@ describe('User ID', function () {
       });
 
       it('calls getId if stored consent does not match current consent and refresh not needed', function () {
-        coreStorage.setCookie(mockIdCookieName, JSON.stringify({id: '1234'}), expStr);
-        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - 1 * 1000).toUTCString()), expStr);
-
-        setStoredConsentData({...consentData, consentString: 'different'});
+        setStorage({cst: getConsentHash()});
+        gdprDataHandler.setConsentData({
+          consentString: 'different'
+        });
 
         config.setConfig(userIdConfig);
 
@@ -3212,10 +3348,7 @@ describe('User ID', function () {
       });
 
       it('does not call getId if stored consent matches current consent and refresh not needed', function () {
-        coreStorage.setCookie(mockIdCookieName, JSON.stringify({id: '1234'}), expStr);
-        coreStorage.setCookie(`${mockIdCookieName}_last`, (new Date(Date.now() - 1 * 1000).toUTCString()), expStr);
-
-        setStoredConsentData({...consentData});
+        setStorage({lastDelta: 1000, cst: getConsentHash()});
 
         config.setConfig(userIdConfig);
 
@@ -3473,11 +3606,16 @@ describe('User ID', function () {
 
       it('pbjs.getUserIdsAsEidBySource with priority config available to core', () => {
         init(config);
+        const uid2Eids = createMockEid('uid2', 'uidapi.com')
+        const pubcEids = createMockEid('pubcid', 'pubcid.org')
+        const liveIntentEids = createMockEid('lipb', 'liveintent.com')
+        const merkleEids = createMockEid('merkleId', 'merkleinc.com')
+
         setSubmoduleRegistry([
-          createMockIdSubmodule('mockId1Module', {id: {uid2: {id: 'uid2_value'}}}),
-          createMockIdSubmodule('mockId2Module', {id: {pubcid: 'pubcid_value', lipb: {lipbid: 'lipbid_value_from_mockId2Module'}}}),
-          createMockIdSubmodule('mockId3Module', {id: {uid2: {id: 'uid2_value_from_mockId3Module'}, pubcid: 'pubcid_value_from_mockId3Module', lipb: {lipbid: 'lipbid_value'}, merkleId: {id: 'merkleId_value_from_mockId3Module'}}}),
-          createMockIdSubmodule('mockId4Module', {id: {merkleId: {id: 'merkleId_value'}}})
+          createMockIdSubmodule('mockId1Module', {id: {uid2: {id: 'uid2_value'}}}, null, uid2Eids),
+          createMockIdSubmodule('mockId2Module', {id: {pubcid: 'pubcid_value', lipb: {lipbid: 'lipbid_value_from_mockId2Module'}}}, null, {...pubcEids, ...liveIntentEids}),
+          createMockIdSubmodule('mockId3Module', {id: {uid2: {id: 'uid2_value_from_mockId3Module'}, pubcid: 'pubcid_value_from_mockId3Module', lipb: {lipbid: 'lipbid_value'}, merkleId: {id: 'merkleId_value_from_mockId3Module'}}}, null, {...uid2Eids, ...pubcEids, ...liveIntentEids}),
+          createMockIdSubmodule('mockId4Module', {id: {merkleId: {id: 'merkleId_value'}}}, null, merkleEids)
         ]);
         config.setConfig({
           userSync: {
