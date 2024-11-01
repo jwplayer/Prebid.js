@@ -2,7 +2,7 @@ import {coreStorage, init, setSubmoduleRegistry, requestBidsHook} from 'modules/
 import {config} from 'src/config.js';
 import * as utils from 'src/utils.js';
 import { euidIdSubmodule } from 'modules/euidIdSystem.js';
-import 'modules/consentManagement.js';
+import 'modules/consentManagementTcf.js';
 import 'src/prebid.js';
 import { getGlobal } from 'src/prebidGlobal.js';
 import { server } from 'test/mocks/xhr.js';

@@ -3,7 +3,7 @@ import {spec} from 'modules/mediasquareBidAdapter.js';
 import {newBidder} from 'src/adapters/bidderFactory.js';
 import {config} from 'src/config.js';
 import * as utils from 'src/utils.js';
-import { requestBidsHook } from 'modules/consentManagement.js';
+import { requestBidsHook } from 'modules/consentManagementTcf.js';
 
 describe('MediaSquare bid adapter tests', function () {
   var DEFAULT_PARAMS = [{

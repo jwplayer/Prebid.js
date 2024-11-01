@@ -19,7 +19,7 @@ import {getPrebidInternal} from 'src/utils.js';
 import * as events from 'src/events.js';
 import CONSTANTS from 'src/constants.json';
 import {getGlobal} from 'src/prebidGlobal.js';
-import {resetConsentData, } from 'modules/consentManagement.js';
+import {resetConsentData, } from 'modules/consentManagementTcf.js';
 import {server} from 'test/mocks/xhr.js';
 import {find} from 'src/polyfill.js';
 import {unifiedIdSubmodule} from 'modules/unifiedIdSystem.js';

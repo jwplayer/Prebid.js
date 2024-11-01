@@ -417,7 +417,6 @@ describe('TheMediaGrid Adapter', function () {
             ...bid.mediaTypes,
             ...(bid.mediaTypes.video && { video: {
               ...bid.mediaTypes.video,
-              context: 'instream',
               protocols: [1, 2, 3],
               maxduration: 30,
               api: [1, 2],
