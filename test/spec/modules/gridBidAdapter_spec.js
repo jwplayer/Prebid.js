@@ -417,6 +417,7 @@ describe('TheMediaGrid Adapter', function () {
             ...bid.mediaTypes,
             ...(bid.mediaTypes.video && { video: {
               ...bid.mediaTypes.video,
+              context: 'instream',
               protocols: [1, 2, 3],
               maxduration: 30,
               api: [1, 2],
@@ -480,7 +481,6 @@ describe('TheMediaGrid Adapter', function () {
             'h': 600,
             'protocols': [1, 2, 3],
             'mimes': ['video/mp4', 'video/webm', 'application/javascript', 'video/ogg'],
-            'context': 'instream',
             'maxduration': 30,
             'minduration': 0,
             'api': [1, 2],
