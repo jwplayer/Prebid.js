@@ -31,7 +31,7 @@ import {hook} from './hook.js';
 import {find, includes} from './polyfill.js';
 import {adunitCounter} from './adUnits.js';
 import {getRefererInfo} from './refererDetection.js';
-import {GDPR_GVLIDS, GdprConsentHandler, GppConsentHandler, UspConsentHandler} from './consentHandler.js';
+import {GDPR_GVLIDS, gdprDataHandler, gppDataHandler, uspDataHandler, } from './consentHandler.js';
 import * as events from './events.js';
 import CONSTANTS from './constants.json';
 import {useMetrics} from './utils/perfMetrics.js';
@@ -41,6 +41,8 @@ import {isActivityAllowed} from './activities/rules.js';
 import {ACTIVITY_FETCH_BIDS, ACTIVITY_REPORT_ANALYTICS} from './activities/activities.js';
 import {ACTIVITY_PARAM_ANL_CONFIG, ACTIVITY_PARAM_S2S_NAME, activityParamsBuilder} from './activities/params.js';
 import {redactor} from './activities/redactor.js';
+
+export {gdprDataHandler, gppDataHandler, uspDataHandler, coppaDataHandler} from './consentHandler.js';
 
 const PBS_ADAPTER_NAME = 'pbsBidAdapter';
 export const PARTITIONS = {
@@ -186,16 +188,6 @@ function getAdUnitCopyForClientAdapters(adUnits) {
 
   return adUnitsClientCopy;
 }
-
-export let gdprDataHandler = new GdprConsentHandler();
-export let uspDataHandler = new UspConsentHandler();
-export let gppDataHandler = new GppConsentHandler();
-
-export let coppaDataHandler = {
-  getCoppa: function() {
-    return !!(config.getConfig('coppa'))
-  }
-};
 
 /**
  * Filter and/or modify media types for ad units based on the given labels.
